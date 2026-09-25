@@ -200,55 +200,6 @@ const architectureSteps = [
   ["6. Auditoría", "Todo evento queda registrado con hora, actor, canal y resultado."],
 ];
 
-const launchDecisions = [
-  "Definir responsables titulares y suplentes por organismo y jurisdicción.",
-  "Acordar si la primera fuente de alerta será carga manual validada o integración SMN/SINAME.",
-  "Confirmar canales permitidos: app, WhatsApp, correo y SMS de contingencia.",
-  "Elegir alcance territorial inicial: piloto Tucumán completo o departamentos priorizados.",
-  "Nombrar un responsable institucional para acceso a APIs, plantillas y datos sensibles.",
-];
-
-const integrations = [
-  {
-    name: "SMN / SINAME",
-    status: "Gestión institucional",
-    detail: "Fuente oficial de alertas. Para la primera etapa puede convivir con carga manual auditada.",
-  },
-  {
-    name: "WhatsApp Business",
-    status: "Requiere alta",
-    detail: "Mensajes automáticos con plantillas aprobadas y costo por conversación/mensaje.",
-  },
-  {
-    name: "Firebase Push",
-    status: "Listo para MVP",
-    detail: "Notificaciones dentro de la app/PWA para responsables con sesión activa.",
-  },
-  {
-    name: "Base PostgreSQL/PostGIS",
-    status: "Necesario",
-    detail: "Persistencia de alertas, confirmaciones, auditoría, jurisdicciones y geometría.",
-  },
-  {
-    name: "Autenticación MFA",
-    status: "Necesario",
-    detail: "Ingreso seguro por rol: sala provincial, 107, HyS, Defensa Civil y municipios.",
-  },
-  {
-    name: "SMS contingencia",
-    status: "Etapa 2",
-    detail: "Canal alternativo para alerta roja o caída de conectividad de datos.",
-  },
-];
-
-const milestones = [
-  ["Semana 1", "Validar roles, organismos, jurisdicciones y circuito real de escalamiento."],
-  ["Semanas 2-3", "Backend, base de datos, login y primera auditoría persistente."],
-  ["Semanas 4-5", "Carga de alertas, confirmaciones reales y tablero operativo conectado."],
-  ["Semanas 6-7", "WhatsApp/push, plantillas, permisos y pruebas con responsables designados."],
-  ["Semanas 8-10", "Piloto controlado, ajustes operativos, reporte y decisión de escalamiento."],
-];
-
 let selectedJurisdiction = jurisdictions.find((item) => item.name === "Monteros");
 let distributed = false;
 let escalated = false;
@@ -309,9 +260,6 @@ const timeline = document.getElementById("timeline");
 const schemaList = document.getElementById("schemaList");
 const architectureStepsEl = document.getElementById("architectureSteps");
 const recipientRows = document.getElementById("recipientRows");
-const launchDecisionsEl = document.getElementById("launchDecisions");
-const integrationList = document.getElementById("integrationList");
-const milestoneGrid = document.getElementById("milestoneGrid");
 
 function currentTime() {
   return new Date().toLocaleTimeString("es-AR", {
@@ -618,37 +566,6 @@ function renderArchitecture() {
   });
 }
 
-function renderLaunchPlan() {
-  launchDecisionsEl.innerHTML = "";
-  launchDecisions.forEach((decision) => {
-    const item = document.createElement("li");
-    item.textContent = decision;
-    launchDecisionsEl.appendChild(item);
-  });
-
-  integrationList.innerHTML = "";
-  integrations.forEach((integration) => {
-    const item = document.createElement("div");
-    item.className = "integration-item";
-    item.innerHTML = `
-      <div>
-        <strong>${integration.name}</strong>
-        <span>${integration.detail}</span>
-      </div>
-      <span class="quiet-pill">${integration.status}</span>
-    `;
-    integrationList.appendChild(item);
-  });
-
-  milestoneGrid.innerHTML = "";
-  milestones.forEach(([period, detail]) => {
-    const item = document.createElement("div");
-    item.className = "milestone-item";
-    item.innerHTML = `<strong>${period}</strong><span>${detail}</span>`;
-    milestoneGrid.appendChild(item);
-  });
-}
-
 function addAudit(title, detail, actor = "Operador") {
   auditEvents.unshift({
     time: `${currentTime()} h`,
@@ -685,7 +602,6 @@ function render() {
   renderConfirmations();
   renderRecipients();
   renderTimeline();
-  renderLaunchPlan();
   renderArchitecture();
   renderActionState();
 }

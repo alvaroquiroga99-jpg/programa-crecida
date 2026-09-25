@@ -16,6 +16,7 @@ CRECIDA significa: Conocer, Reconocer, Ejecutar, Cuidar, Integrar, Demostrar y A
 - Bitácora de auditoría.
 - Modelo inicial de base de datos PostgreSQL/PostGIS.
 - Documento de arquitectura para pedir presupuesto técnico.
+- Plan de etapa oficial primaria con APIs, fases y presupuesto orientativo.
 
 ## Archivos principales
 
@@ -25,15 +26,17 @@ CRECIDA significa: Conocer, Reconocer, Ejecutar, Cuidar, Integrar, Demostrar y A
 - `map-data.js`: geometría simplificada de departamentos.
 - `schema.sql`: modelo inicial de base de datos.
 - `ARCHITECTURE.md`: arquitectura recomendada del MVP.
+- `PLAN_ETAPA_OFICIAL.md`: alcance sugerido para pasar a piloto oficial.
 - `tools/build-map-data.js`: regenerador del mapa desde GeoJSON oficial.
 
 ## Próximo paso técnico
 
 Convertir esta maqueta en una aplicación real:
 
-1. Backend seguro en Cloud Run.
-2. PostgreSQL Cloud SQL con PostGIS.
-3. Autenticación con MFA.
-4. Detector de alertas SMN/SINAME.
-5. Notificaciones WhatsApp/push.
-6. Confirmación y escalamiento persistentes.
+1. Validar responsables reales, roles y circuito de escalamiento.
+2. Backend seguro en Cloud Run.
+3. PostgreSQL Cloud SQL con PostGIS.
+4. Autenticación con MFA.
+5. Carga manual auditada e integración SMN/SINAME cuando exista acceso.
+6. Notificaciones WhatsApp/push.
+7. Confirmación y escalamiento persistentes.

@@ -21,7 +21,7 @@
       </div>
 
       <div class="header-status" aria-label="Estado del sistema">
-        <div class="environment-pill">Entorno demo</div>
+        <div class="environment-pill">Piloto primario</div>
         <div class="status-metric">
           <span>Última sincronización</span>
           <strong id="lastSync">15:41 h</strong>
@@ -115,6 +115,7 @@
           <button class="tab" data-view="contacts" type="button">Destinatarios</button>
           <button class="tab" data-view="messages" type="button">Mensajes</button>
           <button class="tab" data-view="audit" type="button">Bitácora</button>
+          <button class="tab" data-view="launch" type="button">Puesta en marcha</button>
           <button class="tab" data-view="architecture" type="button">Arquitectura</button>
         </nav>
 
@@ -258,6 +259,42 @@
             <button class="secondary-button" id="addAuditButton" type="button">Registrar seguimiento</button>
           </div>
           <ol class="timeline" id="timeline"></ol>
+        </section>
+
+        <section class="view" id="launchView">
+          <div class="view-header">
+            <div>
+              <p class="eyebrow">Paso a etapa oficial</p>
+              <h2>Plan primario de implementación</h2>
+            </div>
+            <span class="quiet-pill">6 a 10 semanas</span>
+          </div>
+
+          <div class="launch-layout">
+            <article class="launch-card">
+              <div class="launch-card-head">
+                <span>01</span>
+                <h3>Decisiones de arranque</h3>
+              </div>
+              <ul class="decision-list" id="launchDecisions"></ul>
+            </article>
+
+            <article class="launch-card">
+              <div class="launch-card-head">
+                <span>02</span>
+                <h3>APIs e integraciones</h3>
+              </div>
+              <div class="integration-list" id="integrationList"></div>
+            </article>
+
+            <article class="launch-card launch-card-wide">
+              <div class="launch-card-head">
+                <span>03</span>
+                <h3>Primer alcance oficial</h3>
+              </div>
+              <div class="milestone-grid" id="milestoneGrid"></div>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="architectureView">
