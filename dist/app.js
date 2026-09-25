@@ -270,6 +270,7 @@ let distributed = false;
 let escalated = false;
 let auditCounter = 0;
 let extraRecipients = loadExtraRecipients();
+let editingRecipientIndex = null;
 
 const labelOffsets = {
   Capital: [20, -6],
@@ -328,6 +329,8 @@ const architectureStepsEl = document.getElementById("architectureSteps");
 const recipientRows = document.getElementById("recipientRows");
 const recipientForm = document.getElementById("recipientForm");
 const recipientJurisdiction = document.getElementById("recipientJurisdiction");
+const recipientSubmitButton = document.getElementById("recipientSubmitButton");
+const cancelRecipientEditButton = document.getElementById("cancelRecipientEditButton");
 const alertForm = document.getElementById("alertForm");
 const manualAlertZones = document.getElementById("manualAlertZones");
 const selectAllZonesButton = document.getElementById("selectAllZonesButton");
@@ -519,6 +522,11 @@ function deleteRecipient(index) {
   if (!recipient) return;
 
   extraRecipients.splice(index, 1);
+  if (editingRecipientIndex === index) {
+    cancelRecipientEdit();
+  } else if (editingRecipientIndex !== null && editingRecipientIndex > index) {
+    editingRecipientIndex -= 1;
+  }
   saveExtraRecipients();
   addAudit(
     "Responsable eliminado",
@@ -526,6 +534,30 @@ function deleteRecipient(index) {
     "Carga operativa",
   );
   render();
+}
+
+function cancelRecipientEdit() {
+  editingRecipientIndex = null;
+  recipientForm.reset();
+  recipientJurisdiction.value = "Capital";
+  recipientSubmitButton.textContent = "Agregar responsable";
+  cancelRecipientEditButton.hidden = true;
+}
+
+function editRecipient(index) {
+  const recipient = extraRecipients[index];
+  if (!recipient) return;
+
+  editingRecipientIndex = index;
+  recipientForm.elements.name.value = recipient.name;
+  recipientForm.elements.email.value = recipient.email;
+  recipientForm.elements.phone.value = recipient.phone;
+  recipientForm.elements.role.value = recipient.role;
+  recipientForm.elements.jurisdiction.value = recipient.jurisdiction;
+  recipientForm.elements.organization.value = recipient.organization;
+  recipientSubmitButton.textContent = "Guardar cambios";
+  cancelRecipientEditButton.hidden = false;
+  recipientForm.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function makeSvgElement(tag, attrs = {}) {
@@ -778,7 +810,10 @@ function renderRecipients() {
       <td>
         ${
           row.editable
-            ? `<button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>`
+            ? `<div class="table-actions">
+                <button class="table-action edit-text-button" data-edit-recipient="${row.id}" type="button">Editar</button>
+                <button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>
+              </div>`
             : `<span class="table-subtext">Base operativa</span>`
         }
       </td>
@@ -947,23 +982,45 @@ recipientForm.addEventListener("submit", (event) => {
     last: `${currentTime()} h`,
   };
 
-  extraRecipients.unshift(recipient);
+  if (editingRecipientIndex === null) {
+    extraRecipients.unshift(recipient);
+    addAudit(
+      "Responsable agregado",
+      `${recipient.name} fue cargado como ${recipient.organization} en ${recipient.jurisdiction}.`,
+      "Carga operativa",
+    );
+  } else {
+    const previous = extraRecipients[editingRecipientIndex];
+    extraRecipients[editingRecipientIndex] = {
+      ...recipient,
+      status: previous?.status || "Pendiente",
+      last: `${currentTime()} h`,
+    };
+    addAudit(
+      "Responsable editado",
+      `${recipient.name} fue actualizado en ${recipient.organization} / ${recipient.jurisdiction}.`,
+      "Carga operativa",
+    );
+  }
+
   saveExtraRecipients();
-  addAudit(
-    "Responsable agregado",
-    `${recipient.name} fue cargado como ${recipient.organization} en ${recipient.jurisdiction}.`,
-    "Carga operativa",
-  );
-  recipientForm.reset();
-  recipientJurisdiction.value = recipient.jurisdiction;
+  cancelRecipientEdit();
   render();
 });
 
 recipientRows.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-delete-recipient]");
-  if (!button) return;
-  deleteRecipient(Number(button.dataset.deleteRecipient));
+  const editButton = event.target.closest("[data-edit-recipient]");
+  if (editButton) {
+    editRecipient(Number(editButton.dataset.editRecipient));
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-delete-recipient]");
+  if (!deleteButton) return;
+  deleteRecipient(Number(deleteButton.dataset.deleteRecipient));
 });
+
+cancelRecipientEditButton.addEventListener("click", cancelRecipientEdit);
 
 selectAllZonesButton.addEventListener("click", () => {
   manualAlertZones.querySelectorAll('input[name="zones"]').forEach((input) => {

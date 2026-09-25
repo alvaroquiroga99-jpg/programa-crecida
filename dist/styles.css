@@ -924,11 +924,33 @@ button:disabled {
   font-size: 12px;
 }
 
+.recipient-form button {
+  width: 100%;
+}
+
+.recipient-form button[hidden] {
+  display: none;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .table-action {
   min-height: 36px;
   padding: 0 10px;
   border-radius: 7px;
   font-size: 13px;
+}
+
+.edit-text-button {
+  border: 1px solid #a9cbd3;
+  background: var(--blue-soft);
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 900;
 }
 
 .danger-text-button {
