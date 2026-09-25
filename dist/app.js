@@ -344,7 +344,22 @@ function currentTime() {
 }
 
 function getJurisdiction(name) {
-  return jurisdictions.find((item) => item.name === name) || { name, ...defaultState };
+  const configured = jurisdictions.find((item) => item.name === name);
+  if (configured) return configured;
+
+  if (alertData.affected.includes(name)) {
+    return {
+      ...defaultState,
+      name,
+      risk: alertData.levelKey,
+      response: alertData.levelKey === "red" ? "escalate" : alertData.levelKey === "orange" ? "partial" : "watch",
+      status: alertData.levelKey === "red" ? "Escalar" : alertData.level,
+      detail: `${name} está incluida en la alerta ${alertData.level.toLowerCase()} activa. Falta cargar responsables operativos para esta jurisdicción.`,
+      critical: ["Responsables locales pendientes de carga"],
+    };
+  }
+
+  return { name, ...defaultState };
 }
 
 function responseClass(response) {
@@ -425,6 +440,7 @@ function setupAlertForm() {
       label.className = "zone-option";
       label.innerHTML = `
         <input type="checkbox" name="zones" value="${name}" ${alertData.affected.includes(name) ? "checked" : ""} />
+        <span class="zone-checkmark" aria-hidden="true"></span>
         <span>${name}</span>
       `;
       manualAlertZones.appendChild(label);

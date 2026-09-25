@@ -827,10 +827,10 @@ button:disabled {
 .zone-checklist {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  max-height: 210px;
+  gap: 6px;
+  max-height: 190px;
   overflow: auto;
-  padding: 7px;
+  padding: 8px;
   border: 1px solid var(--line-strong);
   border-radius: 7px;
   background: #fff;
@@ -839,47 +839,13 @@ button:disabled {
 .zone-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 5px 8px;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 6px;
   border-radius: 6px;
-  background: var(--surface-muted);
   color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.1;
-  cursor: pointer;
-}
-
-.zone-option input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.zone-checkmark {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--line-strong);
-  border-radius: 5px;
-  background: #fff;
-}
-
-.zone-option input:checked + .zone-checkmark {
-  border-color: var(--blue);
-  background: var(--blue);
-}
-
-.zone-option input:checked + .zone-checkmark::after {
-  content: "";
-  width: 5px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .zone-option:has(input:checked) {
