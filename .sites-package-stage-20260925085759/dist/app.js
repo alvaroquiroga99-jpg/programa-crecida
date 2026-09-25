@@ -330,8 +330,6 @@ const recipientForm = document.getElementById("recipientForm");
 const recipientJurisdiction = document.getElementById("recipientJurisdiction");
 const alertForm = document.getElementById("alertForm");
 const manualAlertZones = document.getElementById("manualAlertZones");
-const selectAllZonesButton = document.getElementById("selectAllZonesButton");
-const clearZonesButton = document.getElementById("clearZonesButton");
 const launchDecisionsEl = document.getElementById("launchDecisions");
 const integrationList = document.getElementById("integrationList");
 const milestoneGrid = document.getElementById("milestoneGrid");
@@ -421,13 +419,11 @@ function setupAlertForm() {
     .map((department) => department.name)
     .sort((a, b) => a.localeCompare(b, "es"))
     .forEach((name) => {
-      const label = document.createElement("label");
-      label.className = "zone-option";
-      label.innerHTML = `
-        <input type="checkbox" name="zones" value="${name}" ${alertData.affected.includes(name) ? "checked" : ""} />
-        <span>${name}</span>
-      `;
-      manualAlertZones.appendChild(label);
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      option.selected = alertData.affected.includes(name);
+      manualAlertZones.appendChild(option);
     });
 }
 
@@ -473,31 +469,6 @@ function resetJurisdictionRisks(affected, levelKey) {
   });
 }
 
-function createAlertAreaPath(affected) {
-  const affectedDepartments = departmentData.filter((department) => affected.includes(department.name));
-  if (!affectedDepartments.length) return "";
-
-  const xs = affectedDepartments.map((department) => department.centroid[0]);
-  const ys = affectedDepartments.map((department) => department.centroid[1]);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  const radiusX = Math.max(52, (maxX - minX) / 2 + 64);
-  const radiusY = Math.max(54, (maxY - minY) / 2 + 72);
-
-  return [
-    `M ${centerX - radiusX} ${centerY}`,
-    `C ${centerX - radiusX} ${centerY - radiusY * 0.58} ${centerX - radiusX * 0.58} ${centerY - radiusY} ${centerX} ${centerY - radiusY}`,
-    `C ${centerX + radiusX * 0.58} ${centerY - radiusY} ${centerX + radiusX} ${centerY - radiusY * 0.58} ${centerX + radiusX} ${centerY}`,
-    `C ${centerX + radiusX} ${centerY + radiusY * 0.58} ${centerX + radiusX * 0.58} ${centerY + radiusY} ${centerX} ${centerY + radiusY}`,
-    `C ${centerX - radiusX * 0.58} ${centerY + radiusY} ${centerX - radiusX} ${centerY + radiusY * 0.58} ${centerX - radiusX} ${centerY}`,
-    "Z",
-  ].join(" ");
-}
-
 function deleteRecipient(index) {
   const recipient = extraRecipients[index];
   if (!recipient) return;
@@ -536,8 +507,7 @@ function renderAlert() {
 
   const badge = document.getElementById("alertLevel");
   badge.classList.toggle("severity-red", alertData.levelKey === "red");
-  badge.classList.toggle("severity-orange", alertData.levelKey === "orange");
-  badge.classList.toggle("severity-yellow", alertData.levelKey === "yellow");
+  badge.classList.toggle("severity-orange", alertData.levelKey !== "red");
 }
 
 function renderMap() {
@@ -595,14 +565,11 @@ function renderMap() {
   });
   svg.appendChild(departmentsGroup);
 
-  const alertAreaPath = createAlertAreaPath(alertData.affected);
-  if (alertAreaPath) {
-    const alertArea = makeSvgElement("path", {
-      class: `alert-area alert-area-${alertData.levelKey}`,
-      d: alertAreaPath,
-    });
-    svg.appendChild(alertArea);
-  }
+  const alertArea = makeSvgElement("path", {
+    class: "alert-area",
+    d: "M162 286 C190 272 229 285 252 312 C279 346 291 400 259 444 C229 468 184 447 151 404 C124 370 126 316 162 286 Z",
+  });
+  svg.appendChild(alertArea);
 
   const markersGroup = makeSvgElement("g", { class: "marker-layer" });
   departmentData.forEach((department) => {
@@ -949,18 +916,6 @@ recipientRows.addEventListener("click", (event) => {
   deleteRecipient(Number(button.dataset.deleteRecipient));
 });
 
-selectAllZonesButton.addEventListener("click", () => {
-  manualAlertZones.querySelectorAll('input[name="zones"]').forEach((input) => {
-    input.checked = true;
-  });
-});
-
-clearZonesButton.addEventListener("click", () => {
-  manualAlertZones.querySelectorAll('input[name="zones"]').forEach((input) => {
-    input.checked = false;
-  });
-});
-
 alertForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const formData = new FormData(alertForm);
@@ -970,11 +925,6 @@ alertForm.addEventListener("submit", (event) => {
   const validUntil = formData.get("validUntil").trim();
   const directive = directiveForLevel(levelKey, formData.get("directive"));
   const now = currentTime();
-
-  if (!affected.length) {
-    addAudit("Alerta no creada", "La carga manual no tenía departamentos afectados seleccionados.", "Validación");
-    return;
-  }
 
   alertData.id = `MANUAL-TUC-${Date.now().toString().slice(-6)}`;
   alertData.level = levelLabel(levelKey);

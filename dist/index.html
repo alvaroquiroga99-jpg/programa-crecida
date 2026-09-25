@@ -178,7 +178,15 @@
                 </div>
                 <div class="form-field">
                   <label for="manualAlertZones">Departamentos afectados</label>
-                  <select id="manualAlertZones" name="zones" multiple required></select>
+                  <div class="zone-tools">
+                    <button class="secondary-button compact-button" id="selectAllZonesButton" type="button">
+                      Todos
+                    </button>
+                    <button class="secondary-button compact-button" id="clearZonesButton" type="button">
+                      Limpiar
+                    </button>
+                  </div>
+                  <div class="zone-checklist" id="manualAlertZones" role="group" aria-label="Departamentos afectados"></div>
                 </div>
                 <div class="form-field">
                   <label for="manualAlertValidUntil">Vigencia</label>

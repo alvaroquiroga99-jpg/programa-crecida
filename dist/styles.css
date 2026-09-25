@@ -194,6 +194,11 @@ h3 {
   background: var(--orange);
 }
 
+.severity-yellow {
+  background: var(--yellow);
+  color: #2f2a17;
+}
+
 .severity-red {
   background: var(--red);
 }
@@ -363,6 +368,12 @@ h3 {
 
 .ghost-button {
   color: var(--blue);
+}
+
+.compact-button {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 button:hover {
@@ -605,6 +616,18 @@ button:disabled {
   pointer-events: none;
 }
 
+.alert-area-yellow {
+  stroke: #9b741c;
+}
+
+.alert-area-orange {
+  stroke: #9c432b;
+}
+
+.alert-area-red {
+  stroke: #8b2626;
+}
+
 .map-marker {
   cursor: pointer;
 }
@@ -783,11 +806,6 @@ button:disabled {
   line-height: 1.35;
 }
 
-.form-field select[multiple] {
-  min-height: 132px;
-  padding: 8px 10px;
-}
-
 .alert-form {
   display: grid;
   gap: 10px;
@@ -798,6 +816,41 @@ button:disabled {
 
 .form-title h2 {
   margin-bottom: 0;
+}
+
+.zone-tools {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.zone-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  max-height: 190px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #fff;
+}
+
+.zone-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.zone-option:has(input:checked) {
+  background: var(--blue-soft);
+  color: var(--ink);
 }
 
 .recipient-table {
