@@ -1,0 +1,675 @@
+const alertData = {
+  id: "ACP-SMN-TUC-1540",
+  level: "Naranja",
+  levelKey: "orange",
+  title: "Tormentas fuertes",
+  directive: "Lluvias intensas. Preparación activa.",
+  zoneCompact: "Famaillá / Monteros / Simoca",
+  source: "Servicio Meteorológico Nacional",
+  sourceShort: "SMN",
+  issuedAt: "15:40 h",
+  validUntil: "Hasta 18:40 h",
+  lastSync: "15:41 h",
+  affected: ["Famaillá", "Monteros", "Simoca", "Leales"],
+  message:
+    "AVISO A MUY CORTO PLAZO\n\nFuente: Servicio Meteorológico Nacional\nID: ACP-SMN-TUC-1540\n\nFenómeno: tormentas fuertes con lluvias intensas.\nZona afectada: Famaillá - Monteros - Simoca.\nVigencia: hasta 18:40 h.\n\nAcción: confirmar recepción y verificar disponibilidad operativa.\n\nCONFIRMAR RECEPCIÓN EN LA APP",
+};
+
+const jurisdictions = [
+  {
+    name: "Simoca",
+    risk: "red",
+    response: "escalate",
+    contacts: 2,
+    confirmed: 0,
+    status: "Escalar",
+    detail:
+      "Jurisdicción crítica sin confirmaciones. Debe escalarse a Defensa Civil provincial y 107 Central.",
+    critical: ["Atahona", "Ciudacita", "Pampa Mayo", "Los Juárez"],
+    orgs: [
+      { name: "Defensa Civil local", status: "Sin confirmar", channel: "WhatsApp", last: "15:42 h" },
+      { name: "Municipio", status: "Sin confirmar", channel: "App", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Monteros",
+    risk: "orange",
+    response: "partial",
+    contacts: 3,
+    confirmed: 2,
+    status: "Parcial",
+    detail:
+      "Afectada por el polígono del ACP. Falta la confirmación municipal para cerrar la recepción local.",
+    critical: ["Villa Quinteros", "León Rougés", "Los Sosa", "Santa Lucía"],
+    orgs: [
+      { name: "107 local", status: "Confirmado", channel: "WhatsApp", last: "15:43 h" },
+      { name: "Hospital", status: "Confirmado", channel: "App", last: "15:44 h" },
+      { name: "Municipio", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Famaillá",
+    risk: "orange",
+    response: "ok",
+    contacts: 3,
+    confirmed: 3,
+    status: "Confirmado",
+    detail: "Jurisdicción afectada con recepción completa. Mantener seguimiento hasta el cierre de vigencia.",
+    critical: ["Padilla", "El Cruce", "Nueva Baviera"],
+    orgs: [
+      { name: "Defensa Civil local", status: "Confirmado", channel: "WhatsApp", last: "15:43 h" },
+      { name: "Hospital", status: "Confirmado", channel: "App", last: "15:44 h" },
+      { name: "Municipio", status: "Confirmado", channel: "WhatsApp", last: "15:45 h" },
+    ],
+  },
+  {
+    name: "Leales",
+    risk: "orange",
+    response: "partial",
+    contacts: 3,
+    confirmed: 2,
+    status: "Parcial",
+    detail: "Área bajo preparación activa por posible desplazamiento de tormentas hacia zonas bajas.",
+    critical: ["Los Gómez", "Los Puestos", "Santa Rosa de Leales"],
+    orgs: [
+      { name: "Municipio", status: "Confirmado", channel: "WhatsApp", last: "15:43 h" },
+      { name: "Salud", status: "Confirmado", channel: "App", last: "15:46 h" },
+      { name: "Defensa Civil local", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Capital",
+    risk: "yellow",
+    response: "watch",
+    contacts: 4,
+    confirmed: 3,
+    status: "Vigilancia",
+    detail: "Vigilancia reforzada por acumulación de lluvia y posible impacto en accesos del área metropolitana.",
+    critical: ["Barrios del sur", "Canal Sur", "Accesos a hospitales"],
+    orgs: [
+      { name: "107 Central", status: "Confirmado", channel: "App", last: "15:42 h" },
+      { name: "Defensa Civil", status: "Confirmado", channel: "WhatsApp", last: "15:42 h" },
+      { name: "Municipio", status: "Confirmado", channel: "App", last: "15:45 h" },
+      { name: "Higiene y Seguridad", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Yerba Buena",
+    risk: "yellow",
+    response: "watch",
+    contacts: 3,
+    confirmed: 2,
+    status: "Vigilancia",
+    detail: "Vigilancia reforzada por proximidad al área de tormentas y accesos hacia pedemonte.",
+    critical: ["San José", "Canales de escurrimiento", "Acceso oeste"],
+    orgs: [
+      { name: "Municipio", status: "Confirmado", channel: "WhatsApp", last: "15:43 h" },
+      { name: "Salud", status: "Confirmado", channel: "App", last: "15:44 h" },
+      { name: "Higiene y Seguridad", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Lules",
+    risk: "yellow",
+    response: "watch",
+    contacts: 2,
+    confirmed: 2,
+    status: "Vigilancia",
+    detail: "Zona en vigilancia por cercanía al corredor de tormentas. Sin faltantes críticos al momento.",
+    critical: ["San Pablo", "El Manantial", "Canalizaciones rurales"],
+    orgs: [
+      { name: "Municipio", status: "Confirmado", channel: "WhatsApp", last: "15:44 h" },
+      { name: "Salud", status: "Confirmado", channel: "App", last: "15:45 h" },
+    ],
+  },
+  {
+    name: "Cruz Alta",
+    risk: "yellow",
+    response: "watch",
+    contacts: 2,
+    confirmed: 1,
+    status: "Vigilancia",
+    detail: "Seguimiento preventivo del sector este y accesos por posible anegamiento.",
+    critical: ["Banda del Río Salí", "Alderetes", "Los Ralos"],
+    orgs: [
+      { name: "Municipio", status: "Confirmado", channel: "App", last: "15:46 h" },
+      { name: "Defensa Civil local", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+  {
+    name: "Chicligasta",
+    risk: "yellow",
+    response: "watch",
+    contacts: 2,
+    confirmed: 2,
+    status: "Vigilancia",
+    detail: "Vigilancia del corredor sur por crecidas repentinas y accesos secundarios.",
+    critical: ["Alpachiri", "Alto Verde", "Arcadia"],
+    orgs: [
+      { name: "107 local", status: "Confirmado", channel: "WhatsApp", last: "15:45 h" },
+      { name: "Municipio", status: "Confirmado", channel: "App", last: "15:46 h" },
+    ],
+  },
+  {
+    name: "Río Chico",
+    risk: "yellow",
+    response: "watch",
+    contacts: 2,
+    confirmed: 1,
+    status: "Vigilancia",
+    detail: "Área de vigilancia por historial de anegamientos y necesidad de monitoreo territorial.",
+    critical: ["Aguilares", "Los Sarmientos", "Santa Bárbara"],
+    orgs: [
+      { name: "Hospital", status: "Confirmado", channel: "App", last: "15:46 h" },
+      { name: "Municipio", status: "Pendiente", channel: "WhatsApp", last: "15:42 h" },
+    ],
+  },
+];
+
+const defaultState = {
+  risk: "green",
+  response: "ok",
+  contacts: 0,
+  confirmed: 0,
+  status: "Sin afectación",
+  detail: "Sin afectación vigente. Mantiene datos territoriales disponibles para consulta.",
+  critical: ["Sin puntos cargados en el MVP"],
+  orgs: [],
+};
+
+const schema = [
+  ["users", "Identidad, rol, MFA, organismo y jurisdicción asignada."],
+  ["organizations", "Defensa Civil, 107, Salud, municipios, policía, bomberos y Cruz Roja."],
+  ["jurisdictions", "Departamentos, municipios, localidades y geometría PostGIS."],
+  ["alerts", "Alerta oficial, fuente, vigencia, nivel, fenómeno y payload original."],
+  ["alert_areas", "Polígonos oficiales para intersección territorial."],
+  ["alert_impacts", "Resultado del cruce entre alerta, jurisdicción y organismo."],
+  ["notifications", "Mensajes generados por canal y regla de distribución."],
+  ["notification_deliveries", "Envío, entrega, error y proveedor de cada mensaje."],
+  ["acknowledgements", "Confirmación de recepción por usuario, hora y organismo."],
+  ["escalations", "Escalamiento automático por falta de respuesta."],
+  ["audit_log", "Bitácora inmodificable de acciones relevantes."],
+];
+
+const architectureSteps = [
+  ["1. Detector oficial", "Cloud Scheduler consulta SMN/SINAME y Cloud Run valida nuevas alertas."],
+  ["2. Cruce territorial", "PostGIS intersecta el polígono con Tucumán, departamentos y jurisdicciones."],
+  ["3. Distribución", "Pub/Sub genera tareas de WhatsApp, push, correo o SMS con reintentos."],
+  ["4. Confirmación", "Cada responsable confirma recepción y el tablero actualiza faltantes."],
+  ["5. Escalamiento", "Si no hay respuesta en el plazo definido, avisa a 107 Central y Defensa Civil."],
+  ["6. Auditoría", "Todo evento queda registrado con hora, actor, canal y resultado."],
+];
+
+let selectedJurisdiction = jurisdictions.find((item) => item.name === "Monteros");
+let distributed = false;
+let escalated = false;
+let auditCounter = 0;
+
+const labelOffsets = {
+  Capital: [20, -6],
+  "Cruz Alta": [22, -8],
+  Famaillá: [22, -6],
+  Leales: [22, -12],
+  Lules: [-20, 20],
+  Monteros: [22, 8],
+  "Río Chico": [18, -16],
+  Simoca: [20, 22],
+  "Yerba Buena": [-20, -22],
+};
+
+const auditEvents = [
+  {
+    time: "15:41 h",
+    title: "ACP detectado",
+    detail: "El sistema registró una alerta nueva del SMN.",
+    actor: "Detector automático",
+  },
+  {
+    time: "15:41 h",
+    title: "Cruce territorial",
+    detail: "El polígono intersecta Famaillá, Monteros, Simoca y Leales.",
+    actor: "Motor PostGIS",
+  },
+  {
+    time: "15:42 h",
+    title: "Destinatarios generados",
+    detail: "Se prepararon mensajes para responsables operativos afectados.",
+    actor: "Regla de distribución",
+  },
+  {
+    time: "15:43 h",
+    title: "Recepción confirmada",
+    detail: "Famaillá completó 3/3 confirmaciones.",
+    actor: "Operador local",
+  },
+  {
+    time: "15:50 h",
+    title: "Pendiente crítico",
+    detail: "Simoca continúa sin confirmar recepción.",
+    actor: "Monitor automático",
+  },
+];
+
+const departmentData = window.TUCUMAN_DEPARTMENTS || [];
+const provinceMap = document.getElementById("provinceMap");
+const ackList = document.getElementById("ackList");
+const pendingList = document.getElementById("pendingList");
+const orgList = document.getElementById("orgList");
+const criticalList = document.getElementById("criticalList");
+const timeline = document.getElementById("timeline");
+const schemaList = document.getElementById("schemaList");
+const architectureStepsEl = document.getElementById("architectureSteps");
+const recipientRows = document.getElementById("recipientRows");
+
+function currentTime() {
+  return new Date().toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getJurisdiction(name) {
+  return jurisdictions.find((item) => item.name === name) || { name, ...defaultState };
+}
+
+function responseClass(response) {
+  return `state-${response}`;
+}
+
+function statusForOrg(status) {
+  if (status === "Confirmado") return "ok";
+  if (status === "Sin confirmar") return "escalate";
+  if (status === "Pendiente") return "partial";
+  return "watch";
+}
+
+function makeSvgElement(tag, attrs = {}) {
+  const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+  return element;
+}
+
+function renderAlert() {
+  document.getElementById("alertId").textContent = alertData.id;
+  document.getElementById("alertLevel").textContent = alertData.level;
+  document.getElementById("alertTitle").textContent = alertData.title;
+  document.getElementById("alertDirective").textContent = alertData.directive;
+  document.getElementById("alertZoneCompact").textContent = alertData.zoneCompact;
+  document.getElementById("issuedAt").textContent = alertData.issuedAt;
+  document.getElementById("validUntil").textContent = alertData.validUntil;
+  document.getElementById("lastSync").textContent = alertData.lastSync;
+  document.getElementById("sourceShort").textContent = alertData.sourceShort;
+  document.getElementById("affectedCount").textContent = `${alertData.affected.length} afectadas`;
+  document.getElementById("messageText").textContent = alertData.message;
+
+  const pending = jurisdictions.reduce((sum, item) => sum + (item.contacts - item.confirmed), 0);
+  document.getElementById("pendingCount").textContent = `${pending} responsables`;
+
+  const badge = document.getElementById("alertLevel");
+  badge.classList.toggle("severity-red", alertData.levelKey === "red");
+  badge.classList.toggle("severity-orange", alertData.levelKey !== "red");
+}
+
+function renderMap() {
+  provinceMap.innerHTML = "";
+
+  const svg = makeSvgElement("svg", {
+    class: "tucuman-svg",
+    viewBox: "0 0 460 640",
+    role: "img",
+    "aria-label": "Departamentos de Tucumán con severidad y confirmaciones",
+  });
+
+  const defs = makeSvgElement("defs");
+  const pattern = makeSvgElement("pattern", {
+    id: "alertHatch",
+    width: "10",
+    height: "10",
+    patternUnits: "userSpaceOnUse",
+    patternTransform: "rotate(35)",
+  });
+  pattern.appendChild(makeSvgElement("rect", { width: "10", height: "10", fill: "rgba(215,107,47,0.18)" }));
+  pattern.appendChild(
+    makeSvgElement("line", {
+      x1: "0",
+      y1: "0",
+      x2: "0",
+      y2: "10",
+      stroke: "rgba(156,67,43,0.28)",
+      "stroke-width": "4",
+    }),
+  );
+  defs.appendChild(pattern);
+  svg.appendChild(defs);
+
+  const departmentsGroup = makeSvgElement("g", { class: "department-layer" });
+  departmentData.forEach((department) => {
+    const jurisdiction = getJurisdiction(department.name);
+    const path = makeSvgElement("path", {
+      d: department.path,
+      class: `department risk-${jurisdiction.risk}${selectedJurisdiction.name === department.name ? " selected" : ""}`,
+      tabindex: "0",
+      role: "button",
+      "aria-label": `${department.name}. Riesgo ${jurisdiction.risk}. Estado ${jurisdiction.status}.`,
+    });
+
+    path.addEventListener("click", () => selectJurisdiction(department.name));
+    path.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectJurisdiction(department.name);
+      }
+    });
+
+    departmentsGroup.appendChild(path);
+  });
+  svg.appendChild(departmentsGroup);
+
+  const alertArea = makeSvgElement("path", {
+    class: "alert-area",
+    d: "M162 286 C190 272 229 285 252 312 C279 346 291 400 259 444 C229 468 184 447 151 404 C124 370 126 316 162 286 Z",
+  });
+  svg.appendChild(alertArea);
+
+  const markersGroup = makeSvgElement("g", { class: "marker-layer" });
+  departmentData.forEach((department) => {
+    const jurisdiction = getJurisdiction(department.name);
+
+    if (jurisdiction.risk === "green" && selectedJurisdiction.name !== department.name) {
+      return;
+    }
+
+    const [x, y] = department.centroid;
+    const marker = makeSvgElement("g", {
+      class: `map-marker ${responseClass(jurisdiction.response)}`,
+      transform: `translate(${x} ${y})`,
+      tabindex: "0",
+      role: "button",
+      "aria-label": `${department.name}. ${jurisdiction.confirmed} de ${jurisdiction.contacts} confirmaciones.`,
+    });
+    marker.appendChild(makeSvgElement("circle", { class: "marker-hit", r: "24" }));
+    marker.appendChild(makeSvgElement("circle", { class: "marker-core", r: "15" }));
+
+    const text = makeSvgElement("text", { class: "marker-text", y: "1" });
+    text.textContent = jurisdiction.contacts ? `${jurisdiction.confirmed}/${jurisdiction.contacts}` : "";
+    marker.appendChild(text);
+
+    marker.addEventListener("click", () => selectJurisdiction(department.name));
+    marker.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectJurisdiction(department.name);
+      }
+    });
+
+    markersGroup.appendChild(marker);
+
+    const shouldLabel =
+      jurisdiction.risk === "red" ||
+      jurisdiction.risk === "orange" ||
+      selectedJurisdiction.name === department.name;
+
+    if (shouldLabel) {
+      const [dx, dy] = labelOffsets[department.name] || [20, -18];
+      const label = makeSvgElement("text", {
+        class: "map-label",
+        x: String(x + dx),
+        y: String(y + dy),
+        "text-anchor": dx < 0 ? "end" : "start",
+      });
+      label.textContent = department.name;
+      markersGroup.appendChild(label);
+    }
+  });
+  svg.appendChild(markersGroup);
+  provinceMap.appendChild(svg);
+}
+
+function selectJurisdiction(name) {
+  selectedJurisdiction = getJurisdiction(name);
+  render();
+}
+
+function renderSelected() {
+  document.getElementById("selectedName").textContent = selectedJurisdiction.name;
+  document.getElementById("selectedDetail").textContent = selectedJurisdiction.detail;
+  document.getElementById("selectedContacts").textContent = selectedJurisdiction.contacts;
+  document.getElementById("selectedConfirmed").textContent = selectedJurisdiction.confirmed;
+  document.getElementById("selectedPending").textContent = selectedJurisdiction.contacts - selectedJurisdiction.confirmed;
+
+  const selectedStatus = document.getElementById("selectedStatus");
+  selectedStatus.textContent = selectedJurisdiction.status;
+  selectedStatus.className = `status-token ${responseClass(selectedJurisdiction.response)}`;
+
+  orgList.innerHTML = "";
+  selectedJurisdiction.orgs.forEach((org) => {
+    const item = document.createElement("li");
+    item.innerHTML = `
+      <span class="list-main">
+        <strong>${org.name}</strong>
+        <span>${org.channel} - ${org.last}</span>
+      </span>
+      <span class="status-token ${responseClass(statusForOrg(org.status))}">${org.status}</span>
+    `;
+    orgList.appendChild(item);
+  });
+
+  criticalList.innerHTML = "";
+  selectedJurisdiction.critical.forEach((name) => {
+    const item = document.createElement("li");
+    item.innerHTML = `<span class="list-main"><strong>${name}</strong><span>Validación territorial pendiente</span></span>`;
+    criticalList.appendChild(item);
+  });
+}
+
+function renderConfirmations() {
+  const totals = jurisdictions.reduce(
+    (acc, item) => {
+      acc.contacts += item.contacts;
+      acc.confirmed += item.confirmed;
+      return acc;
+    },
+    { contacts: 0, confirmed: 0 },
+  );
+  const percent = totals.contacts ? Math.round((totals.confirmed / totals.contacts) * 100) : 0;
+
+  document.getElementById("ackSummary").textContent = `${totals.confirmed}/${totals.contacts}`;
+  document.getElementById("ackProgress").style.width = `${percent}%`;
+
+  ackList.innerHTML = "";
+  jurisdictions.slice(0, 7).forEach((item) => {
+    const row = document.createElement("li");
+    row.innerHTML = `
+      <span class="list-main">
+        <strong>${item.name}</strong>
+        <span>${item.confirmed}/${item.contacts} confirmaciones</span>
+      </span>
+      <span class="status-token ${responseClass(item.response)}">${item.status}</span>
+    `;
+    ackList.appendChild(row);
+  });
+
+  pendingList.innerHTML = "";
+  jurisdictions
+    .filter((item) => item.contacts - item.confirmed > 0)
+    .sort((a, b) => b.contacts - b.confirmed - (a.contacts - a.confirmed))
+    .slice(0, 5)
+    .forEach((item) => {
+      const pending = item.contacts - item.confirmed;
+      const row = document.createElement("li");
+      row.innerHTML = `
+        <span class="list-main">
+          <strong>${item.name}</strong>
+          <span>Faltan ${pending} responsables</span>
+        </span>
+        <span class="status-token ${responseClass(item.response)}">${item.status}</span>
+      `;
+      pendingList.appendChild(row);
+    });
+}
+
+function renderRecipients() {
+  const rows = jurisdictions.flatMap((jurisdiction) =>
+    jurisdiction.orgs.map((org) => ({
+      jurisdiction: jurisdiction.name,
+      organization: org.name,
+      channel: org.channel,
+      status: org.status,
+      last: org.last,
+      response: statusForOrg(org.status),
+    })),
+  );
+
+  document.getElementById("recipientCount").textContent = `${rows.length} responsables`;
+  recipientRows.innerHTML = "";
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.jurisdiction}</td>
+      <td>${row.organization}</td>
+      <td>${row.channel}</td>
+      <td><span class="status-token ${responseClass(row.response)}">${row.status}</span></td>
+      <td>${row.last}</td>
+    `;
+    recipientRows.appendChild(tr);
+  });
+}
+
+function renderTimeline() {
+  timeline.innerHTML = "";
+  auditEvents.forEach((event) => {
+    const item = document.createElement("li");
+    item.innerHTML = `
+      <time>${event.time}</time>
+      <span><strong>${event.title}</strong>${event.detail}</span>
+      <span>${event.actor}</span>
+    `;
+    timeline.appendChild(item);
+  });
+}
+
+function renderArchitecture() {
+  architectureStepsEl.innerHTML = "";
+  architectureSteps.forEach(([title, detail]) => {
+    const item = document.createElement("div");
+    item.className = "step-item";
+    item.innerHTML = `<strong>${title}</strong><span>${detail}</span>`;
+    architectureStepsEl.appendChild(item);
+  });
+
+  schemaList.innerHTML = "";
+  schema.forEach(([table, description]) => {
+    const item = document.createElement("div");
+    item.className = "schema-item";
+    item.innerHTML = `<strong>${table}</strong><span>${description}</span>`;
+    schemaList.appendChild(item);
+  });
+}
+
+function addAudit(title, detail, actor = "Operador") {
+  auditEvents.unshift({
+    time: `${currentTime()} h`,
+    title,
+    detail,
+    actor,
+  });
+  renderTimeline();
+}
+
+function renderActionState() {
+  const distributeButton = document.getElementById("distributeButton");
+  const escalateButton = document.getElementById("escalateButton");
+  const actionNote = document.getElementById("actionNote");
+
+  distributeButton.textContent = distributed ? "Alerta distribuida" : "Distribuir alerta";
+  distributeButton.disabled = distributed;
+  escalateButton.textContent = escalated ? "Escalamiento enviado" : "Escalar faltantes";
+  escalateButton.disabled = escalated;
+
+  if (escalated) {
+    actionNote.textContent = "Defensa Civil provincial y 107 Central fueron notificados por falta de respuesta.";
+  } else if (distributed) {
+    actionNote.textContent = "Distribución registrada. El sistema espera confirmaciones y prepara escalamiento.";
+  } else {
+    actionNote.textContent = "WhatsApp individual + notificación de la app. Cada envío queda auditado.";
+  }
+}
+
+function render() {
+  renderAlert();
+  renderMap();
+  renderSelected();
+  renderConfirmations();
+  renderRecipients();
+  renderTimeline();
+  renderArchitecture();
+  renderActionState();
+}
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((button) => button.classList.remove("active"));
+    document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(`${tab.dataset.view}View`).classList.add("active");
+  });
+});
+
+document.getElementById("distributeButton").addEventListener("click", () => {
+  if (distributed) return;
+  distributed = true;
+  alertData.lastSync = `${currentTime()} h`;
+  addAudit(
+    "Alerta distribuida",
+    "WhatsApp y notificación de la app enviados a responsables de jurisdicciones afectadas.",
+    "Operador provincial",
+  );
+  render();
+});
+
+document.getElementById("escalateButton").addEventListener("click", () => {
+  if (escalated) return;
+  escalated = true;
+  alertData.lastSync = `${currentTime()} h`;
+  addAudit(
+    "Escalamiento enviado",
+    "Defensa Civil provincial y 107 Central fueron notificados por falta de confirmación en Simoca.",
+    "Monitor automático",
+  );
+  render();
+});
+
+document.getElementById("addAuditButton").addEventListener("click", () => {
+  auditCounter += 1;
+  addAudit(
+    "Seguimiento manual",
+    `El operador registró una novedad de seguimiento (${auditCounter}).`,
+    "Sala de situación",
+  );
+});
+
+document.getElementById("simulateAlertButton").addEventListener("click", () => {
+  alertData.id = "ACP-SMN-TUC-ROJO";
+  alertData.level = "Rojo";
+  alertData.levelKey = "red";
+  alertData.title = "Lluvia intensa";
+  alertData.directive = "Emergencia operativa en Simoca, Monteros y Leales.";
+  alertData.zoneCompact = "Simoca / Monteros / Leales";
+  alertData.validUntil = "Próximas 3 h";
+  alertData.lastSync = `${currentTime()} h`;
+  alertData.message =
+    "ALERTA ROJA SIMULADA\n\nFuente: Servicio Meteorológico Nacional\nID: ACP-SMN-TUC-ROJO\n\nFenómeno: lluvia intensa con riesgo de anegamiento.\nZona afectada: Simoca - Monteros - Leales.\n\nAcción: activar responsables, confirmar recepción y reportar disponibilidad operativa.\n\nCONFIRMAR RECEPCIÓN EN LA APP";
+
+  const leales = jurisdictions.find((item) => item.name === "Leales");
+  if (leales) {
+    leales.risk = "red";
+    leales.response = "escalate";
+    leales.status = "Escalar";
+    leales.detail = "Alerta roja simulada. Falta confirmación de Defensa Civil local.";
+  }
+
+  addAudit("Alerta roja simulada", "Se activó un escenario de prueba para validar diseño y flujo.", "Modo demo");
+  render();
+});
+
+render();
