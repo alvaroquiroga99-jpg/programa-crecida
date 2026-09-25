@@ -177,6 +177,22 @@ const defaultState = {
   orgs: [],
 };
 
+const defaultExtraRecipients = [
+  {
+    name: "Alvaro Dario Quiroga",
+    email: "alvaro_quiroga@outlook.com.ar",
+    phone: "3815089935",
+    role: "Referente de Higiene y Seguridad de la DGIME",
+    jurisdiction: "Capital",
+    organization: "Higiene y Seguridad",
+    channel: "WhatsApp",
+    status: "Pendiente",
+    last: "Carga inicial",
+  },
+];
+
+const storageKey = "crecida.extraRecipients";
+
 const schema = [
   ["users", "Identidad, rol, MFA, organismo y jurisdicción asignada."],
   ["organizations", "Defensa Civil, 107, Salud, municipios, policía, bomberos y Cruz Roja."],
@@ -253,6 +269,7 @@ let selectedJurisdiction = jurisdictions.find((item) => item.name === "Monteros"
 let distributed = false;
 let escalated = false;
 let auditCounter = 0;
+let extraRecipients = loadExtraRecipients();
 
 const labelOffsets = {
   Capital: [20, -6],
@@ -309,6 +326,8 @@ const timeline = document.getElementById("timeline");
 const schemaList = document.getElementById("schemaList");
 const architectureStepsEl = document.getElementById("architectureSteps");
 const recipientRows = document.getElementById("recipientRows");
+const recipientForm = document.getElementById("recipientForm");
+const recipientJurisdiction = document.getElementById("recipientJurisdiction");
 const launchDecisionsEl = document.getElementById("launchDecisions");
 const integrationList = document.getElementById("integrationList");
 const milestoneGrid = document.getElementById("milestoneGrid");
@@ -333,6 +352,58 @@ function statusForOrg(status) {
   if (status === "Sin confirmar") return "escalate";
   if (status === "Pendiente") return "partial";
   return "watch";
+}
+
+function loadExtraRecipients() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    return Array.isArray(saved) && saved.length ? saved : [...defaultExtraRecipients];
+  } catch {
+    return [...defaultExtraRecipients];
+  }
+}
+
+function saveExtraRecipients() {
+  localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
+}
+
+function allRecipients() {
+  const operationalRows = jurisdictions.flatMap((jurisdiction) =>
+    jurisdiction.orgs.map((org) => ({
+      name: "Responsable designado",
+      email: "",
+      phone: "",
+      role: org.name,
+      jurisdiction: jurisdiction.name,
+      organization: org.name,
+      channel: org.channel,
+      status: org.status,
+      last: org.last,
+      response: statusForOrg(org.status),
+    })),
+  );
+
+  const extraRows = extraRecipients.map((recipient) => ({
+    ...recipient,
+    response: statusForOrg(recipient.status),
+  }));
+
+  return [...extraRows, ...operationalRows];
+}
+
+function setupRecipientForm() {
+  if (!recipientJurisdiction) return;
+  recipientJurisdiction.innerHTML = "";
+  departmentData
+    .map((department) => department.name)
+    .sort((a, b) => a.localeCompare(b, "es"))
+    .forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      recipientJurisdiction.appendChild(option);
+    });
+  recipientJurisdiction.value = "Capital";
 }
 
 function makeSvgElement(tag, attrs = {}) {
@@ -561,24 +632,20 @@ function renderConfirmations() {
 }
 
 function renderRecipients() {
-  const rows = jurisdictions.flatMap((jurisdiction) =>
-    jurisdiction.orgs.map((org) => ({
-      jurisdiction: jurisdiction.name,
-      organization: org.name,
-      channel: org.channel,
-      status: org.status,
-      last: org.last,
-      response: statusForOrg(org.status),
-    })),
-  );
+  const rows = allRecipients();
 
   document.getElementById("recipientCount").textContent = `${rows.length} responsables`;
   recipientRows.innerHTML = "";
   rows.forEach((row) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>
+        <strong>${row.name}</strong>
+        <span class="table-subtext">${row.email || row.phone || "Sin datos cargados"}</span>
+      </td>
       <td>${row.jurisdiction}</td>
       <td>${row.organization}</td>
+      <td>${row.role}</td>
       <td>${row.channel}</td>
       <td><span class="status-token ${responseClass(row.response)}">${row.status}</span></td>
       <td>${row.last}</td>
@@ -732,6 +799,33 @@ document.getElementById("addAuditButton").addEventListener("click", () => {
   );
 });
 
+recipientForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(recipientForm);
+  const recipient = {
+    name: formData.get("name").trim(),
+    email: formData.get("email").trim(),
+    phone: formData.get("phone").trim(),
+    role: formData.get("role").trim(),
+    jurisdiction: formData.get("jurisdiction"),
+    organization: formData.get("organization"),
+    channel: "WhatsApp",
+    status: "Pendiente",
+    last: `${currentTime()} h`,
+  };
+
+  extraRecipients.unshift(recipient);
+  saveExtraRecipients();
+  addAudit(
+    "Responsable agregado",
+    `${recipient.name} fue cargado como ${recipient.organization} en ${recipient.jurisdiction}.`,
+    "Carga operativa",
+  );
+  recipientForm.reset();
+  recipientJurisdiction.value = recipient.jurisdiction;
+  render();
+});
+
 document.getElementById("simulateAlertButton").addEventListener("click", () => {
   alertData.id = "ACP-SMN-TUC-ROJO";
   alertData.level = "Rojo";
@@ -756,4 +850,5 @@ document.getElementById("simulateAlertButton").addEventListener("click", () => {
   render();
 });
 
+setupRecipientForm();
 render();

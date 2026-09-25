@@ -201,12 +201,50 @@
             </div>
             <span class="quiet-pill" id="recipientCount">0 responsables</span>
           </div>
+          <form class="recipient-form" id="recipientForm">
+            <div class="form-field">
+              <label for="recipientName">Responsable</label>
+              <input id="recipientName" name="name" type="text" autocomplete="name" required />
+            </div>
+            <div class="form-field">
+              <label for="recipientEmail">Email</label>
+              <input id="recipientEmail" name="email" type="email" autocomplete="email" />
+            </div>
+            <div class="form-field">
+              <label for="recipientPhone">WhatsApp</label>
+              <input id="recipientPhone" name="phone" type="tel" autocomplete="tel" required />
+            </div>
+            <div class="form-field">
+              <label for="recipientRole">Función</label>
+              <input id="recipientRole" name="role" type="text" required />
+            </div>
+            <div class="form-field">
+              <label for="recipientJurisdiction">Jurisdicción</label>
+              <select id="recipientJurisdiction" name="jurisdiction" required></select>
+            </div>
+            <div class="form-field">
+              <label for="recipientOrganization">Organismo</label>
+              <select id="recipientOrganization" name="organization" required>
+                <option>107 / emergencias médicas</option>
+                <option>Defensa Civil</option>
+                <option>Higiene y Seguridad</option>
+                <option>Municipio / comuna</option>
+                <option>Hospital / CAPS</option>
+                <option>Policía</option>
+                <option>Bomberos</option>
+                <option>Cruz Roja / apoyo</option>
+              </select>
+            </div>
+            <button class="primary-button" type="submit">Agregar responsable</button>
+          </form>
           <div class="recipient-table-wrap">
             <table class="recipient-table">
               <thead>
                 <tr>
+                  <th>Responsable</th>
                   <th>Jurisdicción</th>
                   <th>Organismo</th>
+                  <th>Función</th>
                   <th>Canal</th>
                   <th>Estado</th>
                   <th>Último evento</th>
