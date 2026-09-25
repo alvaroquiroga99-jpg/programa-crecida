@@ -936,7 +936,6 @@ button:disabled {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  align-items: center;
 }
 
 .table-action {
@@ -944,18 +943,6 @@ button:disabled {
   padding: 0 10px;
   border-radius: 7px;
   font-size: 13px;
-}
-
-.status-select {
-  min-height: 36px;
-  max-width: 150px;
-  padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 800;
 }
 
 .edit-text-button {

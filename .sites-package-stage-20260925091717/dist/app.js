@@ -371,17 +371,9 @@ function responseClass(response) {
 
 function statusForOrg(status) {
   if (status === "Confirmado") return "ok";
-  if (status === "Recibido") return "ok";
-  if (status === "En seguimiento") return "watch";
-  if (status === "Sin novedad") return "partial";
-  if (status === "Requiere apoyo") return "escalate";
   if (status === "Sin confirmar") return "escalate";
   if (status === "Pendiente") return "partial";
   return "watch";
-}
-
-function isConfirmedStatus(status) {
-  return ["Confirmado", "Recibido", "En seguimiento", "Sin novedad", "Requiere apoyo"].includes(status);
 }
 
 function loadExtraRecipients() {
@@ -540,21 +532,6 @@ function deleteRecipient(index) {
     "Responsable eliminado",
     `${recipient.name} fue eliminado de ${recipient.organization} en ${recipient.jurisdiction}.`,
     "Carga operativa",
-  );
-  render();
-}
-
-function updateRecipientStatus(index, status) {
-  const recipient = extraRecipients[index];
-  if (!recipient) return;
-
-  recipient.status = status;
-  recipient.last = `${currentTime()} h`;
-  saveExtraRecipients();
-  addAudit(
-    "Recepción actualizada",
-    `${recipient.name} marcó estado "${status}" para ${recipient.organization} en ${recipient.jurisdiction}.`,
-    recipient.name,
   );
   render();
 }
@@ -767,51 +744,26 @@ function renderSelected() {
 }
 
 function renderConfirmations() {
-  const extraTotals = extraRecipients.reduce(
+  const totals = jurisdictions.reduce(
     (acc, item) => {
-      acc.contacts += 1;
-      if (isConfirmedStatus(item.status)) acc.confirmed += 1;
-      if (item.status === "Requiere apoyo") acc.requiresSupport += 1;
+      acc.contacts += item.contacts;
+      acc.confirmed += item.confirmed;
       return acc;
     },
-    { contacts: 0, confirmed: 0, requiresSupport: 0 },
+    { contacts: 0, confirmed: 0 },
   );
-  const totals = extraTotals.contacts
-    ? extraTotals
-    : jurisdictions.reduce(
-        (acc, item) => {
-          acc.contacts += item.contacts;
-          acc.confirmed += item.confirmed;
-          return acc;
-        },
-        { contacts: 0, confirmed: 0, requiresSupport: 0 },
-      );
   const percent = totals.contacts ? Math.round((totals.confirmed / totals.contacts) * 100) : 0;
 
   document.getElementById("ackSummary").textContent = `${totals.confirmed}/${totals.contacts}`;
   document.getElementById("ackProgress").style.width = `${percent}%`;
 
   ackList.innerHTML = "";
-  const confirmationRows = extraRecipients.length
-    ? extraRecipients.slice(0, 7).map((recipient) => ({
-        name: recipient.name,
-        meta: `${recipient.organization} / ${recipient.jurisdiction}`,
-        response: statusForOrg(recipient.status),
-        status: recipient.status,
-      }))
-    : jurisdictions.slice(0, 7).map((item) => ({
-        name: item.name,
-        meta: `${item.confirmed}/${item.contacts} confirmaciones`,
-        response: item.response,
-        status: item.status,
-      }));
-
-  confirmationRows.forEach((item) => {
+  jurisdictions.slice(0, 7).forEach((item) => {
     const row = document.createElement("li");
     row.innerHTML = `
       <span class="list-main">
         <strong>${item.name}</strong>
-        <span>${item.meta}</span>
+        <span>${item.confirmed}/${item.contacts} confirmaciones</span>
       </span>
       <span class="status-token ${responseClass(item.response)}">${item.status}</span>
     `;
@@ -819,35 +771,17 @@ function renderConfirmations() {
   });
 
   pendingList.innerHTML = "";
-  const pendingRows = extraRecipients.length
-    ? extraRecipients
-        .filter((item) => !isConfirmedStatus(item.status) || item.status === "Requiere apoyo")
-        .map((item) => ({
-          name: item.name,
-          meta: item.status === "Requiere apoyo" ? "Requiere apoyo operativo" : "Confirmación pendiente",
-          response: statusForOrg(item.status),
-          status: item.status,
-        }))
-    : jurisdictions
-        .filter((item) => item.contacts - item.confirmed > 0)
-        .sort((a, b) => b.contacts - b.confirmed - (a.contacts - a.confirmed))
-        .slice(0, 5)
-        .map((item) => {
-          const pending = item.contacts - item.confirmed;
-          return {
-            name: item.name,
-            meta: `Faltan ${pending} responsables`,
-            response: item.response,
-            status: item.status,
-          };
-        });
-
-  pendingRows.slice(0, 5).forEach((item) => {
+  jurisdictions
+    .filter((item) => item.contacts - item.confirmed > 0)
+    .sort((a, b) => b.contacts - b.confirmed - (a.contacts - a.confirmed))
+    .slice(0, 5)
+    .forEach((item) => {
+      const pending = item.contacts - item.confirmed;
       const row = document.createElement("li");
       row.innerHTML = `
         <span class="list-main">
           <strong>${item.name}</strong>
-          <span>${item.meta}</span>
+          <span>Faltan ${pending} responsables</span>
         </span>
         <span class="status-token ${responseClass(item.response)}">${item.status}</span>
       `;
@@ -877,13 +811,6 @@ function renderRecipients() {
         ${
           row.editable
             ? `<div class="table-actions">
-                <select class="status-select" data-status-recipient="${row.id}" aria-label="Estado de ${row.name}">
-                  <option ${row.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
-                  <option ${row.status === "Recibido" ? "selected" : ""}>Recibido</option>
-                  <option ${row.status === "En seguimiento" ? "selected" : ""}>En seguimiento</option>
-                  <option ${row.status === "Sin novedad" ? "selected" : ""}>Sin novedad</option>
-                  <option ${row.status === "Requiere apoyo" ? "selected" : ""}>Requiere apoyo</option>
-                </select>
                 <button class="table-action edit-text-button" data-edit-recipient="${row.id}" type="button">Editar</button>
                 <button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>
               </div>`
@@ -1091,12 +1018,6 @@ recipientRows.addEventListener("click", (event) => {
   const deleteButton = event.target.closest("[data-delete-recipient]");
   if (!deleteButton) return;
   deleteRecipient(Number(deleteButton.dataset.deleteRecipient));
-});
-
-recipientRows.addEventListener("change", (event) => {
-  const statusSelect = event.target.closest("[data-status-recipient]");
-  if (!statusSelect) return;
-  updateRecipientStatus(Number(statusSelect.dataset.statusRecipient), statusSelect.value);
 });
 
 cancelRecipientEditButton.addEventListener("click", cancelRecipientEdit);
