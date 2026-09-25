@@ -5,7 +5,7 @@ Objetivo: pasar del MVP visual a una primera version oficial, usable por respons
 ## Alcance recomendado
 
 - Tablero operativo online para alerta vigente.
-- Usuarios con roles: sala provincial, 107, Higiene y Seguridad, Defensa Civil, municipio y consulta.
+- Usuarios con roles jerarquicos: super admin, admin, usuario operativo y consulta.
 - Base de datos persistente para alertas, confirmaciones, escalamiento y auditoria.
 - Carga manual auditada de alertas como respaldo institucional.
 - Integracion progresiva con fuente oficial SMN/SINAME cuando exista acceso autorizado.
@@ -46,3 +46,10 @@ Costo mensual operativo inicial: USD 80 a USD 600, variable por mensajes, base d
 - Cuales son los canales autorizados para notificar.
 - Cual es el plazo de confirmacion antes de escalar.
 - Que nivel de privacidad tendran reportes, usuarios y bitacora.
+
+## Roles previstos
+
+- Super admin: rol reservado para Alvaro Dario Quiroga. Puede administrar configuracion global, admins, organismos, permisos, alertas, usuarios, reportes y auditoria.
+- Admin: puede modificar datos operativos, usuarios y alertas dentro del alcance que se le asigne, pero no tiene control total del sistema ni de otros admins/super admin.
+- Usuario operativo: participa del circuito, recibe comunicaciones, confirma recepcion y puede reportar novedades segun su organismo.
+- Visualizador: acceso de consulta sin capacidad de modificar datos operativos.

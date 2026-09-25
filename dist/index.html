@@ -159,6 +159,38 @@
             </section>
 
             <aside class="jurisdiction-panel" aria-label="Detalle de jurisdicción">
+              <form class="alert-form" id="alertForm">
+                <div class="form-title">
+                  <p class="eyebrow">Carga manual auditada</p>
+                  <h2>Nueva alerta</h2>
+                </div>
+                <div class="form-field">
+                  <label for="manualAlertLevel">Nivel</label>
+                  <select id="manualAlertLevel" name="level" required>
+                    <option value="yellow">Amarillo</option>
+                    <option value="orange" selected>Naranja</option>
+                    <option value="red">Rojo</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="manualAlertTitle">Fenómeno</label>
+                  <input id="manualAlertTitle" name="title" type="text" value="Tormentas fuertes" required />
+                </div>
+                <div class="form-field">
+                  <label for="manualAlertZones">Departamentos afectados</label>
+                  <select id="manualAlertZones" name="zones" multiple required></select>
+                </div>
+                <div class="form-field">
+                  <label for="manualAlertValidUntil">Vigencia</label>
+                  <input id="manualAlertValidUntil" name="validUntil" type="text" value="Próximas 3 h" required />
+                </div>
+                <div class="form-field">
+                  <label for="manualAlertDirective">Acción indicada</label>
+                  <textarea id="manualAlertDirective" name="directive" rows="3" required>Confirmar recepción y verificar disponibilidad operativa.</textarea>
+                </div>
+                <button class="primary-button" type="submit">Crear alerta manual</button>
+              </form>
+
               <div class="selected-header">
                 <div>
                   <p class="eyebrow">Jurisdicción seleccionada</p>

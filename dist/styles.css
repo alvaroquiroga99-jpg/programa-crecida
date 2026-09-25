@@ -43,6 +43,7 @@ body {
 button,
 input,
 select,
+textarea,
 table {
   font: inherit;
 }
@@ -764,7 +765,8 @@ button:disabled {
 }
 
 .form-field input,
-.form-field select {
+.form-field select,
+.form-field textarea {
   width: 100%;
   min-height: 44px;
   padding: 0 10px;
@@ -772,6 +774,30 @@ button:disabled {
   border-radius: 7px;
   background: #fff;
   color: var(--ink);
+}
+
+.form-field textarea {
+  min-height: 86px;
+  padding: 10px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.form-field select[multiple] {
+  min-height: 132px;
+  padding: 8px 10px;
+}
+
+.alert-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-title h2 {
+  margin-bottom: 0;
 }
 
 .recipient-table {

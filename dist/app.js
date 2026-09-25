@@ -328,6 +328,8 @@ const architectureStepsEl = document.getElementById("architectureSteps");
 const recipientRows = document.getElementById("recipientRows");
 const recipientForm = document.getElementById("recipientForm");
 const recipientJurisdiction = document.getElementById("recipientJurisdiction");
+const alertForm = document.getElementById("alertForm");
+const manualAlertZones = document.getElementById("manualAlertZones");
 const launchDecisionsEl = document.getElementById("launchDecisions");
 const integrationList = document.getElementById("integrationList");
 const milestoneGrid = document.getElementById("milestoneGrid");
@@ -404,6 +406,63 @@ function setupRecipientForm() {
       recipientJurisdiction.appendChild(option);
     });
   recipientJurisdiction.value = "Capital";
+}
+
+function setupAlertForm() {
+  if (!manualAlertZones) return;
+  manualAlertZones.innerHTML = "";
+  departmentData
+    .map((department) => department.name)
+    .sort((a, b) => a.localeCompare(b, "es"))
+    .forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      option.selected = alertData.affected.includes(name);
+      manualAlertZones.appendChild(option);
+    });
+}
+
+function levelLabel(levelKey) {
+  return {
+    yellow: "Amarillo",
+    orange: "Naranja",
+    red: "Rojo",
+  }[levelKey];
+}
+
+function directiveForLevel(levelKey, directive) {
+  if (directive.trim()) return directive.trim();
+  if (levelKey === "red") return "Emergencia operativa. Activar responsables y confirmar disponibilidad.";
+  if (levelKey === "orange") return "Preparación activa. Confirmar recepción y verificar disponibilidad.";
+  return "Vigilancia reforzada. Confirmar recepción y mantener monitoreo.";
+}
+
+function resetJurisdictionRisks(affected, levelKey) {
+  jurisdictions.forEach((jurisdiction) => {
+    const isAffected = affected.includes(jurisdiction.name);
+    if (!isAffected) {
+      jurisdiction.risk = "green";
+      jurisdiction.response = jurisdiction.contacts - jurisdiction.confirmed > 0 ? "watch" : "ok";
+      jurisdiction.status = "Sin afectación";
+      return;
+    }
+
+    jurisdiction.risk = levelKey;
+    if (levelKey === "red") {
+      jurisdiction.response = "escalate";
+      jurisdiction.status = "Escalar";
+      jurisdiction.detail = "Alerta roja cargada manualmente. Requiere confirmación operativa prioritaria.";
+    } else if (levelKey === "orange") {
+      jurisdiction.response = jurisdiction.contacts === jurisdiction.confirmed ? "ok" : "partial";
+      jurisdiction.status = jurisdiction.contacts === jurisdiction.confirmed ? "Confirmado" : "Parcial";
+      jurisdiction.detail = "Alerta naranja cargada manualmente. Preparación activa y seguimiento de responsables.";
+    } else {
+      jurisdiction.response = "watch";
+      jurisdiction.status = "Vigilancia";
+      jurisdiction.detail = "Alerta amarilla cargada manualmente. Mantener vigilancia reforzada.";
+    }
+  });
 }
 
 function makeSvgElement(tag, attrs = {}) {
@@ -826,6 +885,42 @@ recipientForm.addEventListener("submit", (event) => {
   render();
 });
 
+alertForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const formData = new FormData(alertForm);
+  const levelKey = formData.get("level");
+  const title = formData.get("title").trim();
+  const affected = formData.getAll("zones");
+  const validUntil = formData.get("validUntil").trim();
+  const directive = directiveForLevel(levelKey, formData.get("directive"));
+  const now = currentTime();
+
+  alertData.id = `MANUAL-TUC-${Date.now().toString().slice(-6)}`;
+  alertData.level = levelLabel(levelKey);
+  alertData.levelKey = levelKey;
+  alertData.title = title;
+  alertData.directive = directive;
+  alertData.zoneCompact = affected.join(" / ");
+  alertData.source = "Carga manual auditada";
+  alertData.sourceShort = "Manual";
+  alertData.issuedAt = `${now} h`;
+  alertData.validUntil = validUntil;
+  alertData.lastSync = `${now} h`;
+  alertData.affected = affected;
+  alertData.message = `${alertData.level.toUpperCase()} - ${title.toUpperCase()}\n\nFuente: carga manual auditada\nID: ${alertData.id}\n\nZona afectada: ${affected.join(" - ")}.\nVigencia: ${validUntil}.\n\nAcción: ${directive}\n\nCONFIRMAR RECEPCIÓN EN LA APP`;
+
+  resetJurisdictionRisks(affected, levelKey);
+  selectedJurisdiction = getJurisdiction(affected[0] || selectedJurisdiction.name);
+  distributed = false;
+  escalated = false;
+  addAudit(
+    "Alerta manual creada",
+    `${alertData.level}: ${title}. Zonas: ${affected.join(", ")}.`,
+    "Super admin / sala de situación",
+  );
+  render();
+});
+
 document.getElementById("simulateAlertButton").addEventListener("click", () => {
   alertData.id = "ACP-SMN-TUC-ROJO";
   alertData.level = "Rojo";
@@ -851,4 +946,5 @@ document.getElementById("simulateAlertButton").addEventListener("click", () => {
 });
 
 setupRecipientForm();
+setupAlertForm();
 render();

@@ -27,7 +27,7 @@ create table users (
   email text unique,
   phone text,
   role text not null check (
-    role in ('ADMIN', 'DEFENSA_CIVIL_PROVINCIAL', '107_CENTRAL', 'RESPONSABLE_LOCAL', 'SALUD_HYS', 'VISUALIZADOR')
+    role in ('SUPER_ADMIN', 'ADMIN', 'USUARIO_OPERATIVO', 'VISUALIZADOR')
   ),
   mfa_required boolean not null default true,
   active boolean not null default true,
