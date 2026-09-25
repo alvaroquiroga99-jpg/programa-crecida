@@ -802,7 +802,7 @@ button:disabled {
 
 .recipient-table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 1160px;
   border-collapse: collapse;
 }
 
@@ -835,6 +835,21 @@ button:disabled {
   display: block;
   color: var(--muted);
   font-size: 12px;
+}
+
+.table-action {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 13px;
+}
+
+.danger-text-button {
+  border: 1px solid #dfa8a8;
+  background: var(--red-soft);
+  color: var(--red);
+  cursor: pointer;
+  font-weight: 900;
 }
 
 .messages-layout {

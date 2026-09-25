@@ -372,6 +372,8 @@ function saveExtraRecipients() {
 function allRecipients() {
   const operationalRows = jurisdictions.flatMap((jurisdiction) =>
     jurisdiction.orgs.map((org) => ({
+      id: "",
+      editable: false,
       name: "Responsable designado",
       email: "",
       phone: "",
@@ -385,7 +387,9 @@ function allRecipients() {
     })),
   );
 
-  const extraRows = extraRecipients.map((recipient) => ({
+  const extraRows = extraRecipients.map((recipient, index) => ({
+    id: String(index),
+    editable: true,
     ...recipient,
     response: statusForOrg(recipient.status),
   }));
@@ -463,6 +467,20 @@ function resetJurisdictionRisks(affected, levelKey) {
       jurisdiction.detail = "Alerta amarilla cargada manualmente. Mantener vigilancia reforzada.";
     }
   });
+}
+
+function deleteRecipient(index) {
+  const recipient = extraRecipients[index];
+  if (!recipient) return;
+
+  extraRecipients.splice(index, 1);
+  saveExtraRecipients();
+  addAudit(
+    "Responsable eliminado",
+    `${recipient.name} fue eliminado de ${recipient.organization} en ${recipient.jurisdiction}.`,
+    "Carga operativa",
+  );
+  render();
 }
 
 function makeSvgElement(tag, attrs = {}) {
@@ -708,6 +726,13 @@ function renderRecipients() {
       <td>${row.channel}</td>
       <td><span class="status-token ${responseClass(row.response)}">${row.status}</span></td>
       <td>${row.last}</td>
+      <td>
+        ${
+          row.editable
+            ? `<button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>`
+            : `<span class="table-subtext">Base operativa</span>`
+        }
+      </td>
     `;
     recipientRows.appendChild(tr);
   });
@@ -883,6 +908,12 @@ recipientForm.addEventListener("submit", (event) => {
   recipientForm.reset();
   recipientJurisdiction.value = recipient.jurisdiction;
   render();
+});
+
+recipientRows.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-delete-recipient]");
+  if (!button) return;
+  deleteRecipient(Number(button.dataset.deleteRecipient));
 });
 
 alertForm.addEventListener("submit", (event) => {
