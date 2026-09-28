@@ -1,0 +1,7 @@
+node_modules/
+functions/node_modules/
+.sites-package-stage-*/
+programa-crecida-site-*.tar.gz
+programa-crecida-site-publish.tar.gz
+dgime-geovisor-app.js
+npm-debug.log*
