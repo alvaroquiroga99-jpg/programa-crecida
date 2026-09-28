@@ -1,0 +1,15 @@
+{
+  "name": "programa-crecida",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Programa CRECIDA - alerta temprana y coordinacion operativa.",
+  "scripts": {
+    "build": "node tools/build-dist.js",
+    "check": "node --check app.js",
+    "firebase:emulators": "firebase emulators:start",
+    "firebase:deploy": "npm run build && firebase deploy"
+  },
+  "devDependencies": {
+    "firebase-tools": "^14.16.0"
+  }
+}

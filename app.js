@@ -280,6 +280,9 @@ let extraRecipients = loadExtraRecipients();
 let editingRecipientIndex = null;
 let hidroStations = [];
 let hidroLastSync = "Sin sincronizar";
+let firebaseApp = null;
+let firestoreDb = null;
+let firebaseEnabled = false;
 
 const labelOffsets = {
   Capital: [20, -6],
@@ -374,9 +377,13 @@ function latLonToSvg(lat, lon) {
 
 async function syncHidroData({ silent = false } = {}) {
   try {
-    const response = await fetch(hidroApiUrl, { cache: "no-store" });
+    const url = location.hostname.includes("web.app") || location.hostname.includes("firebaseapp.com")
+      ? "/api/hidro"
+      : hidroApiUrl;
+    const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const payload = await response.json();
+    const data = Array.isArray(payload) ? payload : payload.data;
     if (!Array.isArray(data)) throw new Error("Formato hidro inválido");
 
     hidroStations = data
@@ -465,6 +472,60 @@ function loadExtraRecipients() {
 
 function saveExtraRecipients() {
   localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
+  saveRecipientsToFirestore();
+}
+
+function initFirebase() {
+  const config = window.CRECIDA_FIREBASE_CONFIG;
+  if (!config || !window.firebase) return;
+
+  try {
+    firebaseApp = window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(config);
+    firestoreDb = window.firebase.firestore(firebaseApp);
+    firebaseEnabled = true;
+  } catch (error) {
+    firebaseEnabled = false;
+  }
+}
+
+async function loadRecipientsFromFirestore() {
+  if (!firebaseEnabled || !firestoreDb) return;
+  try {
+    const snapshot = await firestoreDb.collection("recipients").orderBy("updatedAt", "desc").limit(250).get();
+    const remoteRecipients = snapshot.docs.map((doc) => ({ firebaseId: doc.id, ...doc.data() }));
+    if (remoteRecipients.length) {
+      extraRecipients = remoteRecipients;
+      localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
+      render();
+    }
+  } catch (error) {
+    addAudit("Firestore no disponible", "La app continúa con almacenamiento local.", "Firebase");
+  }
+}
+
+async function saveRecipientsToFirestore() {
+  if (!firebaseEnabled || !firestoreDb) return;
+  try {
+    const batch = firestoreDb.batch();
+    extraRecipients.forEach((recipient) => {
+      const docRef = recipient.firebaseId
+        ? firestoreDb.collection("recipients").doc(recipient.firebaseId)
+        : firestoreDb.collection("recipients").doc();
+      recipient.firebaseId = docRef.id;
+      batch.set(
+        docRef,
+        {
+          ...recipient,
+          updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    });
+    await batch.commit();
+    localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
+  } catch (error) {
+    addAudit("Firestore no guardó", "Se conserva copia local de responsables.", "Firebase");
+  }
 }
 
 function allRecipients() {
@@ -1329,5 +1390,7 @@ document.getElementById("syncHidroButton").addEventListener("click", () => {
 
 setupRecipientForm();
 setupAlertForm();
+initFirebase();
 render();
+loadRecipientsFromFirestore();
 syncHidroData({ silent: true });

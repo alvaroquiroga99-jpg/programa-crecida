@@ -17,6 +17,7 @@ CRECIDA significa: Conocer, Reconocer, Ejecutar, Cuidar, Integrar, Demostrar y A
 - Modelo inicial de base de datos PostgreSQL/PostGIS.
 - Documento de arquitectura para pedir presupuesto técnico.
 - Plan de etapa oficial primaria con APIs, fases y presupuesto orientativo.
+- Preparación Firebase: Hosting, Auth, Firestore y Cloud Functions como proxy/cache de APIs.
 
 ## Archivos principales
 
@@ -27,16 +28,17 @@ CRECIDA significa: Conocer, Reconocer, Ejecutar, Cuidar, Integrar, Demostrar y A
 - `schema.sql`: modelo inicial de base de datos.
 - `ARCHITECTURE.md`: arquitectura recomendada del MVP.
 - `PLAN_ETAPA_OFICIAL.md`: alcance sugerido para pasar a piloto oficial.
+- `FIREBASE_SETUP.md`: pasos para publicar en Firebase y conectar Firestore/Auth.
+- `firebase.json`, `firestore.rules`, `functions/`: base de despliegue Firebase.
 - `tools/build-map-data.js`: regenerador del mapa desde GeoJSON oficial.
 
 ## Próximo paso técnico
 
 Convertir esta maqueta en una aplicación real:
 
-1. Validar responsables reales, roles y circuito de escalamiento.
-2. Backend seguro en Cloud Run.
-3. PostgreSQL Cloud SQL con PostGIS.
-4. Autenticación con MFA.
-5. Carga manual auditada e integración SMN/SINAME cuando exista acceso.
-6. Notificaciones WhatsApp/push.
-7. Confirmación y escalamiento persistentes.
+1. Crear proyecto Firebase real y completar `firebase-config.js`.
+2. Activar Firebase Auth y Firestore.
+3. Desplegar Hosting + Functions.
+4. Conectar responsables, alertas, confirmaciones y bitácora a Firestore.
+5. Sumar proxy/cache para capas DGIME/INA, salud, refugios, vialidad e inundación.
+6. Integrar WhatsApp/push cuando estén definidos los canales oficiales.
