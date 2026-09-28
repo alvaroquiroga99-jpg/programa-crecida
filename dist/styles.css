@@ -668,6 +668,31 @@ button:disabled {
   pointer-events: none;
 }
 
+.hydro-marker {
+  cursor: pointer;
+}
+
+.hydro-pulse {
+  fill: rgba(44, 100, 114, 0.14);
+  stroke: rgba(44, 100, 114, 0.18);
+  stroke-width: 1;
+}
+
+.hydro-core {
+  fill: var(--blue);
+  stroke: #fff;
+  stroke-width: 2.4;
+}
+
+.hydro-marker.hydro-alert .hydro-pulse {
+  fill: rgba(185, 53, 53, 0.18);
+  stroke: rgba(185, 53, 53, 0.28);
+}
+
+.hydro-marker.hydro-alert .hydro-core {
+  fill: var(--red);
+}
+
 .map-label {
   fill: var(--ink);
   font-size: 13px;
@@ -684,6 +709,64 @@ button:disabled {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
+}
+
+.external-context {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.hydro-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.hydro-summary div {
+  min-height: 66px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.hydro-summary span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.hydro-summary strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hydro-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.hydro-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-muted);
 }
 
 .legend-item {
@@ -1274,6 +1357,8 @@ button:disabled {
   .compact-facts dl,
   .metric-grid,
   .map-legend,
+  .hydro-summary,
+  .hydro-list,
   .milestone-grid {
     grid-template-columns: 1fr;
   }

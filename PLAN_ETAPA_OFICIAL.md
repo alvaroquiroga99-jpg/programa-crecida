@@ -23,6 +23,19 @@ Objetivo: pasar del MVP visual a una primera version oficial, usable por respons
 | Firebase Auth / Identity Platform | Login y MFA | Recomendado para roles reales |
 | PostgreSQL + PostGIS | Datos, geometria y auditoria | Necesario para etapa oficial |
 | SMS | Contingencia alerta roja | Etapa 2, segun presupuesto |
+| DGIME / INA hidrometria | Alturas, caudales y tendencia de rios | Integrar como contexto operativo inmediato |
+| DGIME GeoJSON rios/salud/refugios | Capas de apoyo territorial | Integrar por backend/cache propio o dataset controlado |
+
+## Capas territoriales a integrar sin perder funcionalidad CRECIDA
+
+- Hidrometria INA SIYAH: aforos, altura, tendencia, nivel de alerta y caudal estimado.
+- Red hidrografica: rios y arroyos principales como capa visual.
+- Salud/SIPROSA: efectores y bases 107 para impacto sanitario.
+- Defensa Civil/refugios: centros de evacuacion y bases operativas.
+- Vialidad critica: puentes, rutas y pasos anegables.
+- Inundacion/riesgo: zonas o cuencas de recurrencia hidrica.
+
+Regla de producto: estas capas no reemplazan el flujo CRECIDA. Funcionan como contexto para decidir a quien avisar, que jurisdiccion priorizar y que recurso activar.
 
 ## Presupuesto orientativo
 

@@ -192,13 +192,6 @@ const defaultExtraRecipients = [
 ];
 
 const storageKey = "crecida.extraRecipients";
-const hidroApiUrl = "https://www.dgime.site/Mapas/api.php?action=get_hidro";
-const tucumanBounds = {
-  minLat: -28.05,
-  maxLat: -26.05,
-  minLon: -66.05,
-  maxLon: -64.35,
-};
 
 const schema = [
   ["users", "Identidad, rol, MFA, organismo y jurisdicción asignada."],
@@ -278,8 +271,6 @@ let escalated = false;
 let auditCounter = 0;
 let extraRecipients = loadExtraRecipients();
 let editingRecipientIndex = null;
-let hidroStations = [];
-let hidroLastSync = "Sin sincronizar";
 
 const labelOffsets = {
   Capital: [20, -6],
@@ -353,67 +344,6 @@ function currentTime() {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function isInsideTucumanBounds(item) {
-  return (
-    Number.isFinite(item.lat) &&
-    Number.isFinite(item.lon) &&
-    item.lat >= tucumanBounds.minLat &&
-    item.lat <= tucumanBounds.maxLat &&
-    item.lon >= tucumanBounds.minLon &&
-    item.lon <= tucumanBounds.maxLon
-  );
-}
-
-function latLonToSvg(lat, lon) {
-  const x = ((lon - tucumanBounds.minLon) / (tucumanBounds.maxLon - tucumanBounds.minLon)) * 460;
-  const y = ((tucumanBounds.maxLat - lat) / (tucumanBounds.maxLat - tucumanBounds.minLat)) * 640;
-  return [Math.max(0, Math.min(460, x)), Math.max(0, Math.min(640, y))];
-}
-
-async function syncHidroData({ silent = false } = {}) {
-  try {
-    const response = await fetch(hidroApiUrl, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error("Formato hidro inválido");
-
-    hidroStations = data
-      .map((item) => ({
-        nombre: item.nombre || item.rio || "Aforo sin nombre",
-        rio: item.rio || "Río sin dato",
-        tramo: item.tramo || "",
-        altura_m: Number(item.altura_m),
-        caudal_m3s: Number(item.caudal_estimado_m3s ?? item.caudal_m3s),
-        tendencia: item.tendencia || "permanece",
-        nivel_alerta: item.nivel_alerta || "Normal",
-        fecha: item.fecha || "",
-        lat: Number(item.lat),
-        lon: Number(item.lon),
-      }))
-      .filter(isInsideTucumanBounds);
-
-    hidroLastSync = `${currentTime()} h`;
-    if (!silent) {
-      addAudit(
-        "Hidrometría sincronizada",
-        `Se actualizaron ${hidroStations.length} aforos INA visibles para Tucumán.`,
-        "API DGIME / INA",
-      );
-    }
-    render();
-  } catch (error) {
-    hidroLastSync = "Error de sincronización";
-    if (!silent) {
-      addAudit(
-        "Error hidrometría",
-        "No se pudo sincronizar la API INA/DGIME. Se mantiene la operación manual.",
-        "API DGIME / INA",
-      );
-      render();
-    }
-  }
 }
 
 function getJurisdiction(name) {
@@ -745,23 +675,6 @@ function renderMap() {
     svg.appendChild(alertArea);
   }
 
-  const hidroGroup = makeSvgElement("g", { class: "hydro-layer" });
-  hidroStations.forEach((station) => {
-    const [x, y] = latLonToSvg(station.lat, station.lon);
-    const isCrecida = station.tendencia === "crece" || station.nivel_alerta.toLowerCase().includes("alerta");
-    const marker = makeSvgElement("g", {
-      class: `hydro-marker ${isCrecida ? "hydro-alert" : "hydro-normal"}`,
-      transform: `translate(${x} ${y})`,
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${station.nombre}. ${station.nivel_alerta}. Altura ${station.altura_m || "--"} metros.`,
-    });
-    marker.appendChild(makeSvgElement("circle", { class: "hydro-pulse", r: "13" }));
-    marker.appendChild(makeSvgElement("circle", { class: "hydro-core", r: "7" }));
-    hidroGroup.appendChild(marker);
-  });
-  svg.appendChild(hidroGroup);
-
   const markersGroup = makeSvgElement("g", { class: "marker-layer" });
   departmentData.forEach((department) => {
     const jurisdiction = getJurisdiction(department.name);
@@ -982,63 +895,6 @@ function renderRecipients() {
   });
 }
 
-function renderHydroContext() {
-  const summary = document.getElementById("hydroSummary");
-  const list = document.getElementById("hydroList");
-  if (!summary || !list) return;
-
-  const crecidas = hidroStations.filter(
-    (item) => item.tendencia === "crece" || item.nivel_alerta.toLowerCase().includes("alerta"),
-  );
-  const maxHeight = hidroStations.reduce((max, item) => {
-    if (!Number.isFinite(item.altura_m)) return max;
-    return Math.max(max, item.altura_m);
-  }, 0);
-
-  summary.innerHTML = `
-    <div>
-      <span>Aforos visibles</span>
-      <strong>${hidroStations.length}</strong>
-    </div>
-    <div>
-      <span>En crecida</span>
-      <strong>${crecidas.length}</strong>
-    </div>
-    <div>
-      <span>Mayor altura</span>
-      <strong>${maxHeight ? `${maxHeight.toFixed(2)} m` : "--"}</strong>
-    </div>
-    <div>
-      <span>Sync</span>
-      <strong>${hidroLastSync}</strong>
-    </div>
-  `;
-
-  list.innerHTML = "";
-  hidroStations
-    .slice()
-    .sort((a, b) => {
-      const ar = a.tendencia === "crece" || a.nivel_alerta.toLowerCase().includes("alerta") ? 1 : 0;
-      const br = b.tendencia === "crece" || b.nivel_alerta.toLowerCase().includes("alerta") ? 1 : 0;
-      return br - ar || (b.altura_m || 0) - (a.altura_m || 0);
-    })
-    .slice(0, 6)
-    .forEach((station) => {
-      const isCrecida = station.tendencia === "crece" || station.nivel_alerta.toLowerCase().includes("alerta");
-      const item = document.createElement("li");
-      item.innerHTML = `
-        <span class="list-main">
-          <strong>${station.nombre}</strong>
-          <span>${station.rio}${station.tramo ? ` / ${station.tramo}` : ""}</span>
-        </span>
-        <span class="status-token ${isCrecida ? "state-escalate" : "state-ok"}">
-          ${Number.isFinite(station.altura_m) ? station.altura_m.toFixed(2) : "--"} m
-        </span>
-      `;
-      list.appendChild(item);
-    });
-}
-
 function renderTimeline() {
   timeline.innerHTML = "";
   auditEvents.forEach((event) => {
@@ -1136,7 +992,6 @@ function render() {
   renderSelected();
   renderConfirmations();
   renderRecipients();
-  renderHydroContext();
   renderTimeline();
   renderLaunchPlan();
   renderArchitecture();
@@ -1323,11 +1178,6 @@ document.getElementById("simulateAlertButton").addEventListener("click", () => {
   render();
 });
 
-document.getElementById("syncHidroButton").addEventListener("click", () => {
-  syncHidroData();
-});
-
 setupRecipientForm();
 setupAlertForm();
 render();
-syncHidroData({ silent: true });
