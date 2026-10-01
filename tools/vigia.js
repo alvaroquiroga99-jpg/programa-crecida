@@ -25,11 +25,11 @@ async function tokenSMN() {
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
     });
-    await page.goto("https://www.smn.gob.ar/alertas", { waitUntil: "networkidle", timeout: 60000 });
+    await page.goto("https://www.smn.gob.ar/alertas", { waitUntil: "domcontentloaded", timeout: 60000 });
     // Esperar a que el sitio escriba el token en localStorage (hasta 30s)
     const token = await page.waitForFunction(
       () => localStorage.getItem("token"),
-      { timeout: 30000 }
+      { timeout: 45000, polling: 500 }
     ).then((h) => h.jsonValue());
     if (!token) throw new Error("token vacío");
     return token;
