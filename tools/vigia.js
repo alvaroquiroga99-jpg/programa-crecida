@@ -72,49 +72,72 @@ async function traerFIRMS() {
   return { focos };
 }
 
-async function traerOSM() {
-  const S = TUC.sur, W = TUC.oeste, N = TUC.norte, E = TUC.este;
-  const q = `[out:json][timeout:180];(` +
-    `nwr["amenity"="fire_station"](${S},${W},${N},${E});` +
-    `nwr["amenity"="police"](${S},${W},${N},${E});` +
-    `nwr["amenity"="hospital"](${S},${W},${N},${E});` +
-    `nwr["amenity"="clinic"](${S},${W},${N},${E});` +
-    `nwr["amenity"="pharmacy"](${S},${W},${N},${E});` +
-    `nwr["amenity"="school"](${S},${W},${N},${E});` +
-    `);out tags center;`;
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function overpass(query) {
   const endpoints = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.osm.ch/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
   ];
-  let data = null, lastErr = null;
-  for (const ep of endpoints) {
-    try {
-      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(q) });
-      if (!r.ok) { lastErr = "HTTP " + r.status + " @ " + ep; continue; }
-      data = await r.json(); break;
-    } catch (e) { lastErr = String(e); }
+  let lastErr = null;
+  for (let round = 0; round < 4; round++) {
+    for (const ep of endpoints) {
+      try {
+        const r = await fetch(ep, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "ProgramaCRECIDA/1.0 (alerta temprana Tucuman; vigia)",
+          },
+          body: "data=" + encodeURIComponent(query),
+        });
+        if (r.status === 429 || r.status === 503 || r.status === 504) {
+          lastErr = "HTTP " + r.status + " @ " + ep;
+          await sleep(4000);
+          continue;
+        }
+        if (!r.ok) { lastErr = "HTTP " + r.status + " @ " + ep; continue; }
+        return await r.json();
+      } catch (e) { lastErr = String(e); }
+    }
+    await sleep(25000); // esperar antes de reintentar toda la rueda (rate-limit)
   }
-  if (!data) throw new Error("Overpass sin respuesta: " + lastErr);
+  throw new Error(lastErr || "sin respuesta");
+}
 
-  const mapCat = { fire_station: "bomberos", police: "policia", hospital: "salud", clinic: "salud", pharmacy: "farmacias", school: "escuelas" };
+async function traerOSM() {
+  const S = TUC.sur, W = TUC.oeste, N = TUC.norte, E = TUC.este;
+  const amenities = [
+    ["fire_station", "bomberos"],
+    ["police", "policia"],
+    ["hospital", "salud"],
+    ["clinic", "salud"],
+    ["pharmacy", "farmacias"],
+    ["school", "escuelas"],
+  ];
   const nombreDefault = { bomberos: "Cuartel de bomberos", policia: "Comisaría / Policía", salud: "Centro de salud", farmacias: "Farmacia", escuelas: "Escuela" };
   const buckets = { bomberos: [], policia: [], salud: [], farmacias: [], escuelas: [] };
-  for (const el of (data.elements || [])) {
-    const t = el.tags || {};
-    const cat = mapCat[t.amenity];
-    if (!cat) continue;
-    const lat = el.lat != null ? el.lat : (el.center && el.center.lat);
-    const lon = el.lon != null ? el.lon : (el.center && el.center.lon);
-    if (lat == null || lon == null) continue;
-    buckets[cat].push({
-      nombre: t.name || t["name:es"] || nombreDefault[cat],
-      lat: Number(lat), lon: Number(lon),
-      tipo: t.amenity,
-      telefono: t.phone || t["contact:phone"] || "",
-      direccion: [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" "),
-      localidad: t["addr:city"] || "",
-    });
+  for (const [am, cat] of amenities) {
+    const q = `[out:json][timeout:120];nwr["amenity"="${am}"](${S},${W},${N},${E});out tags center;`;
+    const data = await overpass(q);
+    for (const el of (data.elements || [])) {
+      const t = el.tags || {};
+      const lat = el.lat != null ? el.lat : (el.center && el.center.lat);
+      const lon = el.lon != null ? el.lon : (el.center && el.center.lon);
+      if (lat == null || lon == null) continue;
+      buckets[cat].push({
+        nombre: t.name || t["name:es"] || nombreDefault[cat],
+        lat: Number(lat), lon: Number(lon),
+        tipo: t.amenity,
+        telefono: t.phone || t["contact:phone"] || "",
+        direccion: [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" "),
+        localidad: t["addr:city"] || "",
+      });
+    }
+    await sleep(2500); // espaciar consultas para no gatillar rate-limit
   }
   return buckets;
 }
