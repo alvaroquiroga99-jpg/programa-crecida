@@ -51,5 +51,22 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if false;
     }
+
+    // --- Datos públicos de monitoreo (los escribe el vigía por Admin SDK) ---
+    match /smn/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /capas/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /sistema/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
   }
 }

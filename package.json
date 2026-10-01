@@ -9,7 +9,8 @@
     "firebase:seed": "node tools/seed-firestore.js",
     "firebase:emulators": "firebase emulators:start",
     "firebase:deploy": "npm run build && firebase deploy",
-    "deploy:hosting": "firebase deploy --only hosting"
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules"
   },
   "devDependencies": {
     "firebase-admin": "^13.10.0",

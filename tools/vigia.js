@@ -1,62 +1,54 @@
 /**
  * Programa CRECIDA — Vigía (ingesta server-side hacia Firestore)
- * -------------------------------------------------------------
- * Corre en GitHub Actions cada X minutos. Hace lo que el navegador NO puede
- * (token del SMN, CORS de FIRMS) y guarda todo en TU Firestore. La app lee
- * de ahí y muestra las alertas oficiales + focos como datos reales.
+ * Obtiene el token del SMN con un navegador headless (pasa Cloudflare),
+ * trae Avisos a Corto Plazo (ACP) + focos NASA FIRMS, y los guarda en Firestore.
  *
- * Fuentes:
- *   - SMN Avisos a Corto Plazo (ACP): ws1.smn.gob.ar/v1/warning/shortterm
- *       El token JWT (1 h) se extrae del HTML de la página del SMN.
- *   - NASA FIRMS (focos de incendio): api area CSV con tu MAP_KEY.
- *
- * Variables de entorno (se cargan como "secrets" en GitHub Actions):
- *   - FIREBASE_SERVICE_ACCOUNT : JSON de la cuenta de servicio (una línea)
- *   - NASA_MAP_KEY             : tu MAP_KEY gratuita de NASA FIRMS
- *
- * Node 18+ (fetch global).
+ * Secrets (GitHub Actions):
+ *   FIREBASE_SERVICE_ACCOUNT : JSON de la cuenta de servicio
+ *   NASA_MAP_KEY             : MAP_KEY gratuita de NASA FIRMS
  */
-
 const admin = require("firebase-admin");
+const { chromium } = require("playwright");
 
-// ── Firebase Admin ────────────────────────────────────────────────────
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
 });
 const db = admin.firestore();
 
-// Bounding box de Tucumán (oeste, sur, este, norte)
 const TUC = { oeste: -66.1, sur: -28.1, este: -64.3, norte: -26.0 };
 
-// ── 1) Token del SMN (inyectado literal en el HTML de su sitio) ───────
+// ── Token del SMN con navegador real (pasa Cloudflare) ────────────────
 async function tokenSMN() {
-  const res = await fetch("https://www.smn.gob.ar/alertas", {
-    headers: {
-      "User-Agent":
+  const browser = await chromium.launch({ args: ["--no-sandbox"] });
+  try {
+    const page = await browser.newPage({
+      userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-      "Accept": "text/html",
-    },
-  });
-  const html = await res.text();
-  const m = html.match(/setItem\(['"]token['"]\s*,\s*['"]([^'"]+)['"]\)/);
-  if (!m) throw new Error("No se pudo extraer el token del SMN (¿cambió el sitio o lo bloqueó Cloudflare?)");
-  return m[1];
+    });
+    await page.goto("https://www.smn.gob.ar/alertas", { waitUntil: "networkidle", timeout: 60000 });
+    // Esperar a que el sitio escriba el token en localStorage (hasta 30s)
+    const token = await page.waitForFunction(
+      () => localStorage.getItem("token"),
+      { timeout: 30000 }
+    ).then((h) => h.jsonValue());
+    if (!token) throw new Error("token vacío");
+    return token;
+  } finally {
+    await browser.close();
+  }
 }
 
-// ── 2) Avisos a Corto Plazo (ACP) del SMN ─────────────────────────────
 async function traerACP(token) {
   const res = await fetch("https://ws1.smn.gob.ar/v1/warning/shortterm/", {
     headers: { Authorization: "JWT " + token },
   });
   if (!res.ok) throw new Error("SMN shortterm HTTP " + res.status);
   const data = await res.json();
-  // Filtrar los que mencionen Tucumán (en zona/área/título) — ajustable.
   const esTuc = (o) => JSON.stringify(o).toLowerCase().includes("tucum");
   const tuc = Array.isArray(data) ? data.filter(esTuc) : [];
   return { total_pais: Array.isArray(data) ? data.length : 0, tucuman: tuc };
 }
 
-// ── 3) Focos de incendio NASA FIRMS (VIIRS, últimas 24 h) ─────────────
 async function traerFIRMS() {
   const key = process.env.NASA_MAP_KEY;
   if (!key) return { skip: "sin NASA_MAP_KEY" };
@@ -85,11 +77,9 @@ async function traerFIRMS() {
   return { focos };
 }
 
-// ── Orquestar y guardar en Firestore ──────────────────────────────────
 async function correr() {
   const resumen = { ts: new Date().toISOString() };
 
-  // SMN ACP
   try {
     const token = await tokenSMN();
     const acp = await traerACP(token);
@@ -102,7 +92,6 @@ async function correr() {
     resumen.acp = "ERROR: " + e.message;
   }
 
-  // FIRMS
   try {
     const f = await traerFIRMS();
     if (!f.skip) {
@@ -122,6 +111,4 @@ async function correr() {
   console.log("Vigía CRECIDA:", JSON.stringify(resumen, null, 2));
 }
 
-correr()
-  .then(() => process.exit(0))
-  .catch((e) => { console.error("Fallo general:", e); process.exit(1); });
+correr().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
