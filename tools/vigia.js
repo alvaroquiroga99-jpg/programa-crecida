@@ -8,7 +8,9 @@
  *   NASA_MAP_KEY             : MAP_KEY gratuita de NASA FIRMS
  */
 const admin = require("firebase-admin");
-const { chromium } = require("playwright");
+const { chromium } = require("playwright-extra");
+const stealth = require("puppeteer-extra-plugin-stealth")();
+chromium.use(stealth);
 
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
@@ -19,20 +21,23 @@ const TUC = { oeste: -66.1, sur: -28.1, este: -64.3, norte: -26.0 };
 
 // ── Token del SMN con navegador real (pasa Cloudflare) ────────────────
 async function tokenSMN() {
-  const browser = await chromium.launch({ args: ["--no-sandbox"] });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+  });
   try {
     const page = await browser.newPage({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
     });
     await page.goto("https://www.smn.gob.ar/alertas", { waitUntil: "domcontentloaded", timeout: 60000 });
-    // Esperar a que el sitio escriba el token en localStorage (hasta 30s)
-    const token = await page.waitForFunction(
-      () => localStorage.getItem("token"),
-      { timeout: 45000, polling: 500 }
-    ).then((h) => h.jsonValue());
-    if (!token) throw new Error("token vacío");
-    return token;
+    // Dar tiempo a que Cloudflare resuelva el desafío y la página real cargue
+    for (let i = 0; i < 30; i++) {
+      const t = await page.evaluate(() => localStorage.getItem("token"));
+      if (t) return t;
+      await page.waitForTimeout(2000);
+    }
+    throw new Error("token no apareció (posible bloqueo Cloudflare)");
   } finally {
     await browser.close();
   }
