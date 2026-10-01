@@ -1,0 +1,127 @@
+/**
+ * Programa CRECIDA — Vigía (ingesta server-side hacia Firestore)
+ * -------------------------------------------------------------
+ * Corre en GitHub Actions cada X minutos. Hace lo que el navegador NO puede
+ * (token del SMN, CORS de FIRMS) y guarda todo en TU Firestore. La app lee
+ * de ahí y muestra las alertas oficiales + focos como datos reales.
+ *
+ * Fuentes:
+ *   - SMN Avisos a Corto Plazo (ACP): ws1.smn.gob.ar/v1/warning/shortterm
+ *       El token JWT (1 h) se extrae del HTML de la página del SMN.
+ *   - NASA FIRMS (focos de incendio): api area CSV con tu MAP_KEY.
+ *
+ * Variables de entorno (se cargan como "secrets" en GitHub Actions):
+ *   - FIREBASE_SERVICE_ACCOUNT : JSON de la cuenta de servicio (una línea)
+ *   - NASA_MAP_KEY             : tu MAP_KEY gratuita de NASA FIRMS
+ *
+ * Node 18+ (fetch global).
+ */
+
+const admin = require("firebase-admin");
+
+// ── Firebase Admin ────────────────────────────────────────────────────
+admin.initializeApp({
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+});
+const db = admin.firestore();
+
+// Bounding box de Tucumán (oeste, sur, este, norte)
+const TUC = { oeste: -66.1, sur: -28.1, este: -64.3, norte: -26.0 };
+
+// ── 1) Token del SMN (inyectado literal en el HTML de su sitio) ───────
+async function tokenSMN() {
+  const res = await fetch("https://www.smn.gob.ar/alertas", {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+      "Accept": "text/html",
+    },
+  });
+  const html = await res.text();
+  const m = html.match(/setItem\(['"]token['"]\s*,\s*['"]([^'"]+)['"]\)/);
+  if (!m) throw new Error("No se pudo extraer el token del SMN (¿cambió el sitio o lo bloqueó Cloudflare?)");
+  return m[1];
+}
+
+// ── 2) Avisos a Corto Plazo (ACP) del SMN ─────────────────────────────
+async function traerACP(token) {
+  const res = await fetch("https://ws1.smn.gob.ar/v1/warning/shortterm/", {
+    headers: { Authorization: "JWT " + token },
+  });
+  if (!res.ok) throw new Error("SMN shortterm HTTP " + res.status);
+  const data = await res.json();
+  // Filtrar los que mencionen Tucumán (en zona/área/título) — ajustable.
+  const esTuc = (o) => JSON.stringify(o).toLowerCase().includes("tucum");
+  const tuc = Array.isArray(data) ? data.filter(esTuc) : [];
+  return { total_pais: Array.isArray(data) ? data.length : 0, tucuman: tuc };
+}
+
+// ── 3) Focos de incendio NASA FIRMS (VIIRS, últimas 24 h) ─────────────
+async function traerFIRMS() {
+  const key = process.env.NASA_MAP_KEY;
+  if (!key) return { skip: "sin NASA_MAP_KEY" };
+  const area = `${TUC.oeste},${TUC.sur},${TUC.este},${TUC.norte}`;
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${area}/1`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("FIRMS HTTP " + res.status);
+  const csv = await res.text();
+  const lineas = csv.trim().split("\n");
+  if (lineas.length < 2) return { focos: [] };
+  const cols = lineas[0].split(",");
+  const idx = (n) => cols.indexOf(n);
+  const focos = lineas.slice(1).map((l) => {
+    const c = l.split(",");
+    return {
+      latitude: Number(c[idx("latitude")]),
+      longitude: Number(c[idx("longitude")]),
+      detection_date: c[idx("acq_date")],
+      detection_time: c[idx("acq_time")],
+      confidence: c[idx("confidence")],
+      frp_mw: Number(c[idx("frp")]),
+      satellite: c[idx("satellite")] || "VIIRS",
+      fuente: "NASA FIRMS VIIRS (NRT, 24h)",
+    };
+  });
+  return { focos };
+}
+
+// ── Orquestar y guardar en Firestore ──────────────────────────────────
+async function correr() {
+  const resumen = { ts: new Date().toISOString() };
+
+  // SMN ACP
+  try {
+    const token = await tokenSMN();
+    const acp = await traerACP(token);
+    await db.collection("smn").doc("acp").set({
+      ...acp,
+      actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    resumen.acp = `${acp.tucuman.length} en Tucumán (${acp.total_pais} país)`;
+  } catch (e) {
+    resumen.acp = "ERROR: " + e.message;
+  }
+
+  // FIRMS
+  try {
+    const f = await traerFIRMS();
+    if (!f.skip) {
+      await db.collection("capas").doc("focos").set({
+        items: f.focos,
+        total: f.focos.length,
+        origen: "NASA FIRMS",
+        actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      resumen.focos = `${f.focos.length} focos`;
+    } else resumen.focos = f.skip;
+  } catch (e) {
+    resumen.focos = "ERROR: " + e.message;
+  }
+
+  await db.collection("sistema").doc("vigia").set(resumen, { merge: true });
+  console.log("Vigía CRECIDA:", JSON.stringify(resumen, null, 2));
+}
+
+correr()
+  .then(() => process.exit(0))
+  .catch((e) => { console.error("Fallo general:", e); process.exit(1); });

@@ -1,0 +1,26 @@
+# Programa CRECIDA — Vigía automático (GitHub Actions)
+name: Vigía CRECIDA
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # cada 30 minutos (UTC)
+  workflow_dispatch: {}        # permite dispararlo a mano desde la pestaña Actions
+
+jobs:
+  ingesta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm install firebase-admin
+
+      - name: Correr el vigía
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          NASA_MAP_KEY: ${{ secrets.NASA_MAP_KEY }}
+        run: node tools/vigia.js

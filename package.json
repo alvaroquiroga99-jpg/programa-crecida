@@ -6,10 +6,13 @@
   "scripts": {
     "build": "node tools/build-dist.js",
     "check": "node --check app.js",
+    "firebase:seed": "node tools/seed-firestore.js",
     "firebase:emulators": "firebase emulators:start",
-    "firebase:deploy": "npm run build && firebase deploy"
+    "firebase:deploy": "npm run build && firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting"
   },
   "devDependencies": {
+    "firebase-admin": "^13.10.0",
     "firebase-tools": "^14.16.0"
   }
 }

@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="MVP del Programa CRECIDA para alerta temprana y coordinación operativa ante inundaciones en Tucumán."
+      content="Programa CRECIDA para alerta temprana y coordinación operativa ante eventos hidrometeorológicos en Tucumán."
     />
     <title>Programa CRECIDA</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="styles.css?v=mupdj7ke" />
   </head>
   <body>
     <header class="command-header">
@@ -21,7 +24,7 @@
       </div>
 
       <div class="header-status" aria-label="Estado del sistema">
-        <div class="environment-pill">Piloto primario</div>
+        <div class="environment-pill">Operación inicial</div>
         <div class="status-metric">
           <span>Última sincronización</span>
           <strong id="lastSync">15:41 h</strong>
@@ -51,8 +54,8 @@
 
           <div class="next-action">
             <span>Próxima acción</span>
-            <strong id="nextActionTitle">Escalar Simoca</strong>
-            <small id="nextActionMeta">0/2 confirmaciones, demora mayor a 10 min</small>
+            <strong id="nextActionTitle">Sin acción pendiente</strong>
+            <small id="nextActionMeta">Monitoreo normal</small>
           </div>
         </section>
 
@@ -114,9 +117,7 @@
           <button class="tab active" data-view="operation" type="button">Operación</button>
           <button class="tab" data-view="contacts" type="button">Destinatarios</button>
           <button class="tab" data-view="messages" type="button">Mensajes</button>
-          <button class="tab" data-view="audit" type="button">Bitácora</button>
-          <button class="tab" data-view="launch" type="button">Puesta en marcha</button>
-          <button class="tab" data-view="architecture" type="button">Arquitectura</button>
+          <button class="tab" data-view="audit" type="button">Trazabilidad</button>
         </nav>
 
         <section class="view active" id="operationView">
@@ -126,6 +127,7 @@
                 <div>
                   <p class="eyebrow">Mapa operativo</p>
                   <h2 id="mapTitle">Departamentos de Tucumán</h2>
+                  <small style="color:var(--muted);font-size:12px;">El color refleja riesgo hidrológico en vivo (aforos INA)</small>
                 </div>
                 <div class="layer-pills" aria-label="Capas visibles">
                   <span>Riesgo territorial</span>
@@ -174,45 +176,9 @@
             </section>
 
             <aside class="jurisdiction-panel" aria-label="Detalle de jurisdicción">
-              <form class="alert-form" id="alertForm">
-                <div class="form-title">
-                  <p class="eyebrow">Carga manual auditada</p>
-                  <h2>Nueva alerta</h2>
-                </div>
-                <div class="form-field">
-                  <label for="manualAlertLevel">Nivel</label>
-                  <select id="manualAlertLevel" name="level" required>
-                    <option value="yellow">Amarillo</option>
-                    <option value="orange" selected>Naranja</option>
-                    <option value="red">Rojo</option>
-                  </select>
-                </div>
-                <div class="form-field">
-                  <label for="manualAlertTitle">Fenómeno</label>
-                  <input id="manualAlertTitle" name="title" type="text" value="Tormentas fuertes" required />
-                </div>
-                <div class="form-field">
-                  <label for="manualAlertZones">Departamentos afectados</label>
-                  <div class="zone-tools">
-                    <button class="secondary-button compact-button" id="selectAllZonesButton" type="button">
-                      Todos
-                    </button>
-                    <button class="secondary-button compact-button" id="clearZonesButton" type="button">
-                      Limpiar
-                    </button>
-                  </div>
-                  <div class="zone-checklist" id="manualAlertZones" role="group" aria-label="Departamentos afectados"></div>
-                </div>
-                <div class="form-field">
-                  <label for="manualAlertValidUntil">Vigencia</label>
-                  <input id="manualAlertValidUntil" name="validUntil" type="text" value="Próximas 3 h" required />
-                </div>
-                <div class="form-field">
-                  <label for="manualAlertDirective">Acción indicada</label>
-                  <textarea id="manualAlertDirective" name="directive" rows="3" required>Confirmar recepción y verificar disponibilidad operativa.</textarea>
-                </div>
-                <button class="primary-button" type="submit">Crear alerta manual</button>
-              </form>
+              <button class="primary-button" id="openAlertModal" type="button" style="width:100%;margin-bottom:16px;">
+                ＋ Nueva alerta manual
+              </button>
 
               <div class="selected-header">
                 <div>
@@ -331,7 +297,7 @@
               <div class="view-header">
                 <div>
                   <p class="eyebrow">Canales</p>
-                  <h2>MVP y contingencia</h2>
+                  <h2>Distribución y contingencia</h2>
                 </div>
               </div>
               <div class="channel-list">
@@ -349,71 +315,85 @@
           <div class="view-header">
             <div>
               <p class="eyebrow">Trazabilidad</p>
-              <h2>Bitácora de la alerta</h2>
+              <h2>Historial de la alerta</h2>
             </div>
             <button class="secondary-button" id="addAuditButton" type="button">Registrar seguimiento</button>
           </div>
           <ol class="timeline" id="timeline"></ol>
         </section>
 
-        <section class="view" id="launchView">
-          <div class="view-header">
-            <div>
-              <p class="eyebrow">Paso a etapa oficial</p>
-              <h2>Plan primario de implementación</h2>
-            </div>
-            <span class="quiet-pill">6 a 10 semanas</span>
-          </div>
-
-          <div class="launch-layout">
-            <article class="launch-card">
-              <div class="launch-card-head">
-                <span>01</span>
-                <h3>Decisiones de arranque</h3>
-              </div>
-              <ul class="decision-list" id="launchDecisions"></ul>
-            </article>
-
-            <article class="launch-card">
-              <div class="launch-card-head">
-                <span>02</span>
-                <h3>APIs e integraciones</h3>
-              </div>
-              <div class="integration-list" id="integrationList"></div>
-            </article>
-
-            <article class="launch-card launch-card-wide">
-              <div class="launch-card-head">
-                <span>03</span>
-                <h3>Primer alcance oficial</h3>
-              </div>
-              <div class="milestone-grid" id="milestoneGrid"></div>
-            </article>
-          </div>
-        </section>
-
-        <section class="view" id="architectureView">
-          <div class="architecture-layout">
-            <article class="architecture-card">
-              <p class="eyebrow">Infraestructura recomendada</p>
-              <h2>Google Cloud + PostgreSQL/PostGIS</h2>
-              <p>
-                El MVP queda preparado para conectar detector SMN/SINAME, API segura, base auditada,
-                notificaciones y escalamiento.
-              </p>
-            </article>
-            <div class="architecture-steps" id="architectureSteps"></div>
-            <div class="schema-list" id="schemaList"></div>
-          </div>
-        </section>
       </section>
     </main>
+
+    <div class="modal" id="alertModal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Registro operativo</p>
+            <h2 id="alertModalTitle">Nueva alerta manual</h2>
+          </div>
+          <button class="modal-close" id="closeAlertModal" type="button" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="alert-form" id="alertForm">
+            <div class="form-field">
+              <label for="manualAlertLevel">Nivel</label>
+              <select id="manualAlertLevel" name="level" required>
+                <option value="yellow">Amarillo</option>
+                <option value="orange" selected>Naranja</option>
+                <option value="red">Rojo</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="manualAlertTitle">Fenómeno</label>
+              <input id="manualAlertTitle" name="title" type="text" value="Tormentas fuertes" required />
+            </div>
+            <div class="form-field">
+              <label for="manualAlertZones">Departamentos afectados</label>
+              <div class="zone-tools">
+                <button class="secondary-button compact-button" id="selectAllZonesButton" type="button">Todos</button>
+                <button class="secondary-button compact-button" id="clearZonesButton" type="button">Limpiar</button>
+              </div>
+              <div class="zone-checklist" id="manualAlertZones" role="group" aria-label="Departamentos afectados"></div>
+            </div>
+            <div class="form-field">
+              <label for="manualAlertValidUntil">Vigencia</label>
+              <input id="manualAlertValidUntil" name="validUntil" type="text" value="Próximas 3 h" required />
+            </div>
+            <div class="form-field">
+              <label for="manualAlertDirective">Acción indicada</label>
+              <textarea id="manualAlertDirective" name="directive" rows="3" required>Confirmar recepción y verificar disponibilidad operativa.</textarea>
+            </div>
+            <button class="primary-button" type="submit">Crear alerta manual</button>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="map-data.js"></script>
-    <script src="app.js"></script>
+    <script src="firebase-config.js?v=mupdj7ke"></script>
+    <script src="map-data.js?v=mupdj7ke"></script>
+    <script src="app.js?v=mupdj7ke"></script>
+    <script src="capas.js?v=mupdj7ke"></script>
+    <script src="reglas.js?v=mupdj7ke"></script>
+    <script src="motor.js?v=mupdj7ke"></script>
+    <script>
+      (function () {
+        const modal = document.getElementById("alertModal");
+        const openBtn = document.getElementById("openAlertModal");
+        const closeBtn = document.getElementById("closeAlertModal");
+        const form = document.getElementById("alertForm");
+        function show() { if (modal) { modal.hidden = false; document.body.style.overflow = "hidden"; } }
+        function hide() { if (modal) { modal.hidden = true; document.body.style.overflow = ""; } }
+        window.openAlertModal = show;
+        if (openBtn) openBtn.addEventListener("click", show);
+        if (closeBtn) closeBtn.addEventListener("click", hide);
+        if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) hide(); });
+        document.addEventListener("keydown", (e) => { if (e.key === "Escape" && modal && !modal.hidden) hide(); });
+        if (form) form.addEventListener("submit", () => setTimeout(hide, 60));
+      })();
+    </script>
   </body>
 </html>
