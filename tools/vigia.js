@@ -1,16 +1,9 @@
 /**
  * Programa CRECIDA — Vigía (ingesta server-side hacia Firestore)
- * Obtiene el token del SMN con un navegador headless (pasa Cloudflare),
- * trae Avisos a Corto Plazo (ACP) + focos NASA FIRMS, y los guarda en Firestore.
- *
- * Secrets (GitHub Actions):
- *   FIREBASE_SERVICE_ACCOUNT : JSON de la cuenta de servicio
- *   NASA_MAP_KEY             : MAP_KEY gratuita de NASA FIRMS
+ * Token del SMN vía FlareSolverr (pasa Cloudflare) + ACP + focos NASA FIRMS.
+ * Secrets: FIREBASE_SERVICE_ACCOUNT, NASA_MAP_KEY. Servicio: FLARESOLVERR_URL.
  */
 const admin = require("firebase-admin");
-const { chromium } = require("playwright-extra");
-const stealth = require("puppeteer-extra-plugin-stealth")();
-chromium.use(stealth);
 
 admin.initializeApp({
   credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
@@ -19,28 +12,25 @@ const db = admin.firestore();
 
 const TUC = { oeste: -66.1, sur: -28.1, este: -64.3, norte: -26.0 };
 
-// ── Token del SMN con navegador real (pasa Cloudflare) ────────────────
 async function tokenSMN() {
-  const browser = await chromium.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"],
-  });
-  try {
-    const page = await browser.newPage({
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-    });
-    await page.goto("https://www.smn.gob.ar/alertas", { waitUntil: "domcontentloaded", timeout: 60000 });
-    // Dar tiempo a que Cloudflare resuelva el desafío y la página real cargue
-    for (let i = 0; i < 30; i++) {
-      const t = await page.evaluate(() => localStorage.getItem("token"));
-      if (t) return t;
-      await page.waitForTimeout(2000);
-    }
-    throw new Error("token no apareció (posible bloqueo Cloudflare)");
-  } finally {
-    await browser.close();
+  const FS = process.env.FLARESOLVERR_URL || "http://localhost:8191/v1";
+  let html = null;
+  for (let i = 0; i < 12; i++) {
+    try {
+      const r = await fetch(FS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cmd: "request.get", url: "https://www.smn.gob.ar/alertas", maxTimeout: 60000 }),
+      });
+      const j = await r.json();
+      if (j && j.solution && j.solution.response) { html = j.solution.response; break; }
+    } catch (e) { /* FlareSolverr todavía no está listo */ }
+    await new Promise((res) => setTimeout(res, 5000));
   }
+  if (!html) throw new Error("FlareSolverr no respondió");
+  const m = html.match(/setItem\(['"]token['"]\s*,\s*['"]([^'"]+)['"]\)/);
+  if (!m) throw new Error("token no está en el HTML resuelto por FlareSolverr");
+  return m[1];
 }
 
 async function traerACP(token) {
@@ -84,33 +74,25 @@ async function traerFIRMS() {
 
 async function correr() {
   const resumen = { ts: new Date().toISOString() };
-
   try {
     const token = await tokenSMN();
     const acp = await traerACP(token);
     await db.collection("smn").doc("acp").set({
-      ...acp,
-      actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+      ...acp, actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
     });
     resumen.acp = `${acp.tucuman.length} en Tucumán (${acp.total_pais} país)`;
-  } catch (e) {
-    resumen.acp = "ERROR: " + e.message;
-  }
+  } catch (e) { resumen.acp = "ERROR: " + e.message; }
 
   try {
     const f = await traerFIRMS();
     if (!f.skip) {
       await db.collection("capas").doc("focos").set({
-        items: f.focos,
-        total: f.focos.length,
-        origen: "NASA FIRMS",
+        items: f.focos, total: f.focos.length, origen: "NASA FIRMS",
         actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
       });
       resumen.focos = `${f.focos.length} focos`;
     } else resumen.focos = f.skip;
-  } catch (e) {
-    resumen.focos = "ERROR: " + e.message;
-  }
+  } catch (e) { resumen.focos = "ERROR: " + e.message; }
 
   await db.collection("sistema").doc("vigia").set(resumen, { merge: true });
   console.log("Vigía CRECIDA:", JSON.stringify(resumen, null, 2));

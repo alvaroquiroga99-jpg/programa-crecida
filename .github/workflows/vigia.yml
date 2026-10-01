@@ -8,17 +8,21 @@ on:
 jobs:
   ingesta:
     runs-on: ubuntu-latest
+    services:
+      flaresolverr:
+        image: ghcr.io/flaresolverr/flaresolverr:latest
+        ports:
+          - 8191:8191
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
       - name: Instalar dependencias
-        run: npm install firebase-admin playwright playwright-extra puppeteer-extra-plugin-stealth
-      - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
+        run: npm install firebase-admin
       - name: Correr el vigía
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           NASA_MAP_KEY: ${{ secrets.NASA_MAP_KEY }}
+          FLARESOLVERR_URL: http://localhost:8191/v1
         run: node tools/vigia.js
