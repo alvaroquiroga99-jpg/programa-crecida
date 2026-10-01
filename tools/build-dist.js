@@ -8,10 +8,13 @@ const files = [
   "styles.css",
   "app.js",
   "map-data.js",
+  "ina.js",
+  "efectores.js",
   "firebase-config.js",
   "capas.js",
   "reglas.js",
   "motor.js",
+  "envio.js",
 ];
 
 fs.mkdirSync(dist, { recursive: true });
@@ -26,7 +29,7 @@ const v = Date.now().toString(36);
 const idxPath = path.join(dist, "index.html");
 if (fs.existsSync(idxPath)) {
   let html = fs.readFileSync(idxPath, "utf8");
-  ["styles.css", "app.js", "map-data.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js"]
+  ["styles.css", "app.js", "map-data.js", "ina.js", "efectores.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js"]
     .forEach((f) => { html = html.split('"' + f + '"').join('"' + f + "?v=" + v + '"'); });
   fs.writeFileSync(idxPath, html);
 }

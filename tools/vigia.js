@@ -72,6 +72,53 @@ async function traerFIRMS() {
   return { focos };
 }
 
+async function traerOSM() {
+  const S = TUC.sur, W = TUC.oeste, N = TUC.norte, E = TUC.este;
+  const q = `[out:json][timeout:180];(` +
+    `nwr["amenity"="fire_station"](${S},${W},${N},${E});` +
+    `nwr["amenity"="police"](${S},${W},${N},${E});` +
+    `nwr["amenity"="hospital"](${S},${W},${N},${E});` +
+    `nwr["amenity"="clinic"](${S},${W},${N},${E});` +
+    `nwr["amenity"="pharmacy"](${S},${W},${N},${E});` +
+    `nwr["amenity"="school"](${S},${W},${N},${E});` +
+    `);out tags center;`;
+  const endpoints = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+  ];
+  let data = null, lastErr = null;
+  for (const ep of endpoints) {
+    try {
+      const r = await fetch(ep, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(q) });
+      if (!r.ok) { lastErr = "HTTP " + r.status + " @ " + ep; continue; }
+      data = await r.json(); break;
+    } catch (e) { lastErr = String(e); }
+  }
+  if (!data) throw new Error("Overpass sin respuesta: " + lastErr);
+
+  const mapCat = { fire_station: "bomberos", police: "policia", hospital: "salud", clinic: "salud", pharmacy: "farmacias", school: "escuelas" };
+  const nombreDefault = { bomberos: "Cuartel de bomberos", policia: "Comisaría / Policía", salud: "Centro de salud", farmacias: "Farmacia", escuelas: "Escuela" };
+  const buckets = { bomberos: [], policia: [], salud: [], farmacias: [], escuelas: [] };
+  for (const el of (data.elements || [])) {
+    const t = el.tags || {};
+    const cat = mapCat[t.amenity];
+    if (!cat) continue;
+    const lat = el.lat != null ? el.lat : (el.center && el.center.lat);
+    const lon = el.lon != null ? el.lon : (el.center && el.center.lon);
+    if (lat == null || lon == null) continue;
+    buckets[cat].push({
+      nombre: t.name || t["name:es"] || nombreDefault[cat],
+      lat: Number(lat), lon: Number(lon),
+      tipo: t.amenity,
+      telefono: t.phone || t["contact:phone"] || "",
+      direccion: [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" "),
+      localidad: t["addr:city"] || "",
+    });
+  }
+  return buckets;
+}
+
 async function correr() {
   const resumen = { ts: new Date().toISOString() };
   try {
@@ -93,6 +140,17 @@ async function correr() {
       resumen.focos = `${f.focos.length} focos`;
     } else resumen.focos = f.skip;
   } catch (e) { resumen.focos = "ERROR: " + e.message; }
+
+  try {
+    const osm = await traerOSM();
+    for (const [cat, items] of Object.entries(osm)) {
+      await db.collection("capas").doc("osm_" + cat).set({
+        items, total: items.length, origen: "OpenStreetMap",
+        actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    resumen.osm = Object.entries(osm).map(([k, v]) => `${k}:${v.length}`).join(" ");
+  } catch (e) { resumen.osm = "ERROR: " + e.message; }
 
   await db.collection("sistema").doc("vigia").set(resumen, { merge: true });
   console.log("Vigía CRECIDA:", JSON.stringify(resumen, null, 2));

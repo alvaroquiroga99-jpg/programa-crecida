@@ -31,7 +31,7 @@ const defaultState = {
 const defaultExtraRecipients = [
   {
     name: "Alvaro Dario Quiroga",
-    email: "alvaro_quiroga@outlook.com.ar",
+    email: "alvaro_quiroga@outlook.com",
     phone: "3815089935",
     role: "Referente de Higiene y Seguridad de la DGIME",
     jurisdiction: "Capital",
@@ -120,11 +120,8 @@ function latLonToSvg(lat, lon) {
 
 async function syncHidroData({ silent = false } = {}) {
   try {
-    const url = hidroApiUrl; // usa api.php directo (la Function /api no está desplegada)
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
-    const data = Array.isArray(payload) ? payload : payload.data;
+    // Fuente oficial INA (SIyAH), directo y en vivo. Reemplaza al api.php de DGIME.
+    const data = await window.CRECIDA_fetchINA();
     if (!Array.isArray(data)) throw new Error("Formato hidro inválido");
 
     hidroStations = data
@@ -148,7 +145,7 @@ async function syncHidroData({ silent = false } = {}) {
       addAudit(
         "Hidrometría sincronizada",
         `Se actualizaron ${hidroStations.length} aforos INA visibles para Tucumán.`,
-        "API DGIME / INA",
+        "INA · SIyAH",
       );
     }
     render();
@@ -157,8 +154,8 @@ async function syncHidroData({ silent = false } = {}) {
     if (!silent) {
       addAudit(
         "Error hidrometría",
-        "No se pudo sincronizar la API INA/DGIME. Se mantiene la operación manual.",
-        "API DGIME / INA",
+        "No se pudo sincronizar con el INA (SIyAH). Se mantiene la operación manual.",
+        "INA · SIyAH",
       );
       render();
     }
@@ -787,6 +784,7 @@ function renderRecipients() {
                   <option ${row.status === "Sin novedad" ? "selected" : ""}>Sin novedad</option>
                   <option ${row.status === "Requiere apoyo" ? "selected" : ""}>Requiere apoyo</option>
                 </select>
+                ${row.phone ? `<a class="table-action wa-text-button" href="https://wa.me/${waPhone(row.phone)}?text=${encodeURIComponent(alertData.message)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
                 <button class="table-action edit-text-button" data-edit-recipient="${row.id}" type="button">Editar</button>
                 <button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>
               </div>`
@@ -1098,3 +1096,10 @@ initFirebase();
 render();
 loadRecipientsFromFirestore();
 syncHidroData({ silent: true });
+
+// --- Envío: helpers compartidos ---
+function waPhone(p) {
+  const d = String(p || "").replace(/\D/g, "");
+  return d.startsWith("54") ? d : "549" + d;
+}
+window.CRECIDA_estado = () => ({ alert: alertData, destinatarios: extraRecipients });

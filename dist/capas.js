@@ -23,6 +23,18 @@
   // Configuración de cada capa: cómo traerla, cómo leer coordenadas,
   // qué mostrar y con qué color. Los accesores respetan los nombres de
   // campo reales de cada endpoint (varían entre capas).
+  // Colores de los efectores de salud según su tipo (para la capa del mapa).
+  const COLORES_EFECTOR = {
+    "Hospital": "#dc2626",
+    "CAPS": "#16a34a",
+    "CIC": "#2563eb",
+    "Policlínico": "#7c3aed",
+    "Maternidad": "#db2777",
+    "Área Programática": "#f59e0b",
+    "SAMEP": "#0ea5e9",
+    "Efector": "#64748b",
+  };
+
   const CAPAS = {
     rutas: {
       titulo: "Rutas críticas",
@@ -59,19 +71,62 @@
       ],
     },
     bomberos: {
-      titulo: "Bomberos",
-      chip: "👨‍🚒 Bomberos",
+      titulo: "Bomberos (OpenStreetMap)",
+      chip: "🚒 Bomberos",
       color: "#ef4444",
-      action: "get_bomberos",
-      lat: (d) => d.latitud,
-      lon: (d) => d.longitud,
+      lat: (d) => d.lat,
+      lon: (d) => d.lon,
       nombre: (d) => d.nombre,
-      sub: (d) => d.localidad,
+      sub: (d) => d.localidad || "",
       detalle: (d) => [
         ["Dirección", d.direccion],
+        ["Localidad", d.localidad],
         ["Teléfono", d.telefono],
-        ["Estado", d.estado],
-        ["Observaciones", d.observaciones],
+        ["Fuente", "OpenStreetMap"],
+      ],
+    },
+    policia: {
+      titulo: "Policía / Comisarías (OpenStreetMap)",
+      chip: "🚓 Policía",
+      color: "#1d4ed8",
+      lat: (d) => d.lat,
+      lon: (d) => d.lon,
+      nombre: (d) => d.nombre,
+      sub: (d) => d.localidad || "",
+      detalle: (d) => [
+        ["Dirección", d.direccion],
+        ["Localidad", d.localidad],
+        ["Teléfono", d.telefono],
+        ["Fuente", "OpenStreetMap"],
+      ],
+    },
+    farmacias: {
+      titulo: "Farmacias (OpenStreetMap)",
+      chip: "💊 Farmacias",
+      color: "#0d9488",
+      lat: (d) => d.lat,
+      lon: (d) => d.lon,
+      nombre: (d) => d.nombre,
+      sub: (d) => d.localidad || "",
+      detalle: (d) => [
+        ["Dirección", d.direccion],
+        ["Localidad", d.localidad],
+        ["Teléfono", d.telefono],
+        ["Fuente", "OpenStreetMap"],
+      ],
+    },
+    escuelas: {
+      titulo: "Escuelas · posibles refugios (OpenStreetMap)",
+      chip: "🏫 Refugios",
+      color: "#9333ea",
+      lat: (d) => d.lat,
+      lon: (d) => d.lon,
+      nombre: (d) => d.nombre,
+      sub: (d) => d.localidad || "",
+      detalle: (d) => [
+        ["Dirección", d.direccion],
+        ["Localidad", d.localidad],
+        ["Fuente", "OpenStreetMap · validar como refugio"],
       ],
     },
     focos: {
@@ -110,6 +165,24 @@
         ["Observación", d.observacion],
       ],
     },
+    efectores: {
+      titulo: "Efectores de salud (SIPROSA)",
+      chip: "🏥 Efectores",
+      color: "#16a34a",
+      colorItem: (d) => COLORES_EFECTOR[d.tipo] || COLORES_EFECTOR["Efector"],
+      action: "",
+      lat: (d) => d.lat,
+      lon: (d) => d.lon,
+      nombre: (d) => d.nombre,
+      sub: (d) => `${d.tipo || ""} · ${d.localidad || ""}`.trim(),
+      detalle: (d) => [
+        ["Tipo", d.tipo],
+        ["Dirección", d.direccion],
+        ["Localidad", d.localidad],
+        ["Departamento", d.departamento],
+        ["Cód. SRT", d.srt],
+      ],
+    },
   };
 
   // Estado de cada capa: si está activa y sus items ya traídos.
@@ -119,10 +192,22 @@
   // ── Traer una capa (con cache en memoria) ──────────────────────────
   async function traerCapa(id) {
     const cfg = CAPAS[id];
-    const res = await fetch(API + cfg.action, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    const arr = Array.isArray(json) ? json : json.items || json.estaciones || [];
+    let arr = null;
+    if (id === "efectores") { arr = window.CRECIDA_EFECTORES || []; }
+    const DOC = { focos: "focos", bomberos: "osm_bomberos", policia: "osm_policia", farmacias: "osm_farmacias", escuelas: "osm_escuelas" };
+    if (arr === null && DOC[id] && window.firebase && window.firebase.firestore) {
+      try {
+        const snap = await window.firebase.firestore().collection("capas").doc(DOC[id]).get();
+        arr = snap.exists ? (snap.data().items || []) : [];
+      } catch (e) { arr = []; }
+    }
+    if (arr === null && cfg.action) {
+      const res = await fetch(API + cfg.action, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      arr = Array.isArray(json) ? json : json.items || json.estaciones || [];
+    }
+    if (arr === null) arr = [];
     return arr
       .map((d) => ({
         lat: Number(cfg.lat(d)),
@@ -201,6 +286,22 @@
     document.getElementById("ciClose").addEventListener("click", () => (box.style.display = "none"));
   }
 
+  // ── Leyenda de colores de Efectores (solo visible con esa capa activa) ─
+  function renderLeyendaEfectores() {
+    const cont = document.getElementById("capasLegend");
+    if (!cont) return;
+    const activa = estado.efectores && estado.efectores.activa;
+    if (!activa) { cont.innerHTML = ""; cont.style.display = "none"; return; }
+    const orden = ["Hospital", "CAPS", "CIC", "Policlínico", "Maternidad", "Área Programática", "SAMEP", "Efector"];
+    const tipos = [...new Set((window.CRECIDA_EFECTORES || []).map((e) => e.tipo))]
+      .sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
+    const filas = tipos.map((t) =>
+      `<div class="cl-row"><span class="cl-dot" style="background:${COLORES_EFECTOR[t] || COLORES_EFECTOR["Efector"]}"></span>${t}</div>`
+    ).join("");
+    cont.innerHTML = `<p class="cl-title">Referencia · Efectores</p>${filas}`;
+    cont.style.display = "block";
+  }
+
   // ── Chips para activar/desactivar cada capa ────────────────────────
   async function alternarCapa(id, chipEl) {
     const st = estado[id];
@@ -215,7 +316,7 @@
         if (window.addAudit) {
           window.addAudit(
             `Capa ${CAPAS[id].titulo}`,
-            `Se cargaron ${st.items.length} puntos desde DGIME.`,
+            `Se cargaron ${st.items.length} puntos.`,
             "Capas de monitoreo",
           );
         }
@@ -232,16 +333,25 @@
       }
     }
     if (window.render) window.render();
+    renderLeyendaEfectores();
   }
 
   function construirBarra() {
-    const head = document.querySelector(".map-head");
-    if (!head || document.getElementById("capasBar")) return;
+    if (document.getElementById("capasPanel")) return;
+    const panel = document.querySelector(".jurisdiction-panel");
+    if (!panel) return;
+
+    const card = document.createElement("section");
+    card.id = "capasPanel";
+    card.className = "capas-panel";
+
+    const h = document.createElement("h3");
+    h.textContent = "Capas del mapa";
+    card.appendChild(h);
 
     const barra = document.createElement("div");
     barra.id = "capasBar";
-    barra.setAttribute("aria-label", "Capas de monitoreo DGIME");
-
+    barra.setAttribute("aria-label", "Capas de monitoreo");
     Object.keys(CAPAS).forEach((id) => {
       const chip = document.createElement("button");
       chip.type = "button";
@@ -250,8 +360,14 @@
       chip.addEventListener("click", () => alternarCapa(id, chip));
       barra.appendChild(chip);
     });
+    card.appendChild(barra);
 
-    head.appendChild(barra);
+    const leg = document.createElement("div");
+    leg.id = "capasLegend";
+    card.appendChild(leg);
+
+    const ref = panel.querySelector(".selected-header");
+    if (ref) panel.insertBefore(card, ref); else panel.appendChild(card);
   }
 
   // ── Estilos mínimos propios (no dependen de styles.css) ────────────

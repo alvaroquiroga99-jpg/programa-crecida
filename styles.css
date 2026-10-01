@@ -521,3 +521,40 @@ h3 {
 @media (max-width: 480px) {
   .compact-facts dl, .metric-grid, .map-legend, .hydro-summary, .hydro-list { grid-template-columns: 1fr; }
 }
+
+/* === Avisos SMN + panel embebido en el rail derecho === */
+.sp-smn { padding: 10px 0 2px; }
+.sp-smn > strong { display: block; color: var(--red); font-size: 13px; margin-bottom: 6px; }
+.sp-smn-item { font-size: 12.5px; color: var(--ink-soft); padding: 5px 0; border-top: 1px dashed var(--line); }
+.jurisdiction-panel > #sugerenciasPanel { margin: -16px -16px 16px; border: 0; border-top: 3px solid var(--accent); border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; box-shadow: none; }
+@media (min-width: 1181px) { .operation-layout { grid-template-columns: minmax(0, 1fr) 400px; } }
+
+/* Botón WhatsApp en la tabla de destinatarios */
+.wa-text-button { border: 1px solid #25d366; background: #e7f9ee; color: #0b7a3b; text-decoration: none; display: inline-flex; align-items: center; }
+.wa-text-button:hover { background: #d4f3e0; }
+
+/* ── Panel de capas del mapa (en el rail lateral) + leyenda de efectores ── */
+.capas-panel { margin-top: 18px; }
+.capas-panel > h3 { margin: 0 0 8px; }
+.capas-panel #capasBar { margin-top: 0; }
+#capasLegend {
+  display: none;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+#capasLegend .cl-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+#capasLegend .cl-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+#capasLegend .cl-dot {
+  width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto;
+  border: 1px solid rgba(2,6,23,.3);
+}

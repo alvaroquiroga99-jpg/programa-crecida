@@ -13,7 +13,7 @@
 (function () {
   "use strict";
 
-  const API_HIDRO = "https://www.dgime.site/Mapas/api.php?action=get_hidro";
+  // Fuente de hidrometría: adaptador window.CRECIDA_fetchINA() (ver ina.js) — INA SIyAH.
 
   // Mismos límites que usa app.js para quedarse solo con Tucumán.
   const BOUNDS = { minLat: -28.05, maxLat: -26.05, minLon: -66.05, maxLon: -64.35 };
@@ -31,7 +31,7 @@
   function nivelSugerido(nivel, tend) {
     const n = (nivel || "").toLowerCase();
     const t = (tend || "").toLowerCase();
-    const esCrecida = n.includes("alerta crecida");
+    const esCrecida = n.includes("alerta crecida") || n.includes("evacua");
     const enAlza = n.includes("alza") || t === "crece";
     if (esCrecida && t === "crece") return "red";
     if (esCrecida) return "orange";
@@ -49,13 +49,20 @@
   const COLOR = { red: "#dc2626", orange: "#f59e0b", yellow: "#eab308" };
 
   let sugerencias = [];
+  let smnAcp = null;
+  let vigiaInfo = null;
+
+  async function leerFuentes() {
+    if (!(window.firebase && window.firebase.firestore)) return;
+    const db = window.firebase.firestore();
+    try { const a = await db.collection("smn").doc("acp").get(); smnAcp = a.exists ? a.data() : null; } catch (e) {}
+    try { const v = await db.collection("sistema").doc("vigia").get(); vigiaInfo = v.exists ? v.data() : null; } catch (e) {}
+  }
 
   async function calcular() {
     let data;
     try {
-      const res = await fetch(API_HIDRO, { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      data = await res.json();
+      data = await window.CRECIDA_fetchINA(); // fuente oficial INA (SIyAH)
     } catch (e) {
       sugerencias = [];
       render(`No se pudo consultar el INA (${e.message}).`);
@@ -101,6 +108,7 @@
     window.CRECIDA_LASTSYNC =
       new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + " h";
 
+    await leerFuentes();
     render();
     if (typeof window.render === "function") window.render();
   }
@@ -149,7 +157,7 @@
   function render(errorMsg) {
     let panel = document.getElementById("sugerenciasPanel");
     if (!panel) {
-      const cont = document.getElementById("operationView");
+      const cont = document.querySelector(".jurisdiction-panel") || document.getElementById("operationView");
       if (!cont) return;
       panel = document.createElement("section");
       panel.id = "sugerenciasPanel";
@@ -158,6 +166,15 @@
 
     const rojas = sugerencias.filter((s) => s.levelKey === "red").length;
     const naranjas = sugerencias.filter((s) => s.levelKey === "orange").length;
+    const smnTuc = (smnAcp && Array.isArray(smnAcp.tucuman)) ? smnAcp.tucuman : [];
+    const smnBlock = smnTuc.length
+      ? `<div class="sp-smn"><strong>⚠️ Avisos oficiales SMN (${smnTuc.length})</strong>` +
+        smnTuc.map((av) => `<div class="sp-smn-item">${av.title || av.titulo || av.name || "Aviso SMN vigente"}</div>`).join("") +
+        `</div>`
+      : "";
+    const _ina = window.CRECIDA_LASTSYNC || "—";
+    const _smn = smnAcp ? (smnTuc.length ? smnTuc.length + " aviso(s)" : "sin avisos") : "—";
+    const _vig = (vigiaInfo && vigiaInfo.ts) ? new Date(vigiaInfo.ts).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
     let filas;
     if (errorMsg) {
@@ -190,8 +207,9 @@
         </div>
         <button type="button" id="spRefresh">Actualizar</button>
       </div>
+      ${smnBlock}
       <div class="sp-body">${filas}</div>
-      <p class="sp-foot">Propuestas automáticas a partir de la telemetría INA. Requieren confirmación de una persona antes de emitir.</p>
+      <p class="sp-foot">Fuentes en vivo · INA ${_ina} · SMN: ${_smn} · Focos: ${vigiaInfo && vigiaInfo.focos ? vigiaInfo.focos : "—"} · vigía ${_vig}</p>
     `;
 
     panel.querySelectorAll(".sp-load").forEach((btn) => {
