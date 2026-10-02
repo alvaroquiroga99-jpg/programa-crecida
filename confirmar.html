@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Confirmar recepción · Programa CRECIDA</title>
+<style>
+  :root{ --azul:#0e6e8c; --tinta:#0f172a; --ok:#16a34a; --linea:#e2e8f0; --muted:#64748b; }
+  *{box-sizing:border-box}
+  body{margin:0;font:400 16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f1f5f9;color:var(--tinta);display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border-radius:18px;box-shadow:0 18px 50px rgba(2,6,23,.12);max-width:440px;width:100%;padding:28px 26px;border-top:5px solid var(--azul)}
+  .eyebrow{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{margin:4px 0 14px;font-size:20px}
+  .datos{background:#f8fafc;border:1px solid var(--linea);border-radius:12px;padding:12px 14px;margin:14px 0;font-size:14px}
+  .datos div{display:flex;gap:8px;margin:3px 0}
+  .datos span{color:var(--muted);min-width:95px}
+  .datos strong{color:var(--tinta)}
+  button{width:100%;border:none;border-radius:12px;background:var(--azul);color:#fff;font:600 16px system-ui;padding:14px;cursor:pointer;transition:.15s}
+  button:hover{background:#0b586f}
+  button:disabled{opacity:.6;cursor:default}
+  .ok-box{display:none;text-align:center;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:18px;margin-top:6px}
+  .ok-box .big{font-size:40px;line-height:1}
+  .err{display:none;color:#b91c1c;font-size:14px;margin-top:10px}
+  .pie{margin-top:16px;font-size:12px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+  <div class="card">
+    <p class="eyebrow">Programa CRECIDA · Tucumán</p>
+    <h1>Confirmar recepción de alerta</h1>
+    <div class="datos" id="datos"></div>
+    <button id="btn" type="button">✓ Confirmo que recibí esta alerta</button>
+    <div class="ok-box" id="okBox">
+      <div class="big">✅</div>
+      <p style="margin:8px 0 0"><strong>¡Recepción confirmada!</strong><br/>Gracias. Tu confirmación quedó registrada.</p>
+    </div>
+    <p class="err" id="err"></p>
+    <p class="pie">Sistema operativo de alerta temprana · DGIME-SIPROSA</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    function slug(s){return (s||"").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");}
+    const p = new URLSearchParams(location.search);
+    const alerta = p.get("a") || p.get("alerta") || "";
+    const dest   = p.get("d") || p.get("dest") || "";
+    const jur    = p.get("j") || p.get("jur")  || "";
+    document.getElementById("datos").innerHTML =
+      `<div><span>Alerta</span><strong>${alerta || "—"}</strong></div>` +
+      `<div><span>Destinatario</span><strong>${dest || "—"}</strong></div>` +
+      (jur ? `<div><span>Jurisdicción</span><strong>${jur}</strong></div>` : "");
+
+    let db = null;
+    try { firebase.initializeApp(window.CRECIDA_FIREBASE_CONFIG); db = firebase.firestore(); } catch(e){}
+
+    const btn = document.getElementById("btn");
+    if (!alerta || !dest) {
+      btn.disabled = true;
+      const e = document.getElementById("err"); e.style.display="block";
+      e.textContent = "Enlace incompleto. Pedí el enlace correcto a quien te envió la alerta.";
+    }
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Registrando…";
+      try {
+        const id = `${slug(alerta)}__${slug(dest)}`;
+        await db.collection("confirmaciones").doc(id).set({
+          alerta, dest, destSlug: slug(dest), jurisdiction: jur,
+          ts: Date.now(),
+          confirmadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        document.getElementById("okBox").style.display = "block";
+        btn.style.display = "none";
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "✓ Confirmo que recibí esta alerta";
+        const el = document.getElementById("err"); el.style.display="block";
+        el.textContent = "No se pudo registrar: " + (e && e.message ? e.message : e);
+      }
+    });
+  </script>
+</body>
+</html>

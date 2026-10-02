@@ -115,11 +115,9 @@ async function traerOSM() {
     ["police", "policia"],
     ["hospital", "salud"],
     ["clinic", "salud"],
-    ["pharmacy", "farmacias"],
-    ["school", "escuelas"],
   ];
-  const nombreDefault = { bomberos: "Cuartel de bomberos", policia: "Comisaría / Policía", salud: "Centro de salud", farmacias: "Farmacia", escuelas: "Escuela" };
-  const buckets = { bomberos: [], policia: [], salud: [], farmacias: [], escuelas: [] };
+  const nombreDefault = { bomberos: "Cuartel de bomberos", policia: "Comisaría / Policía", salud: "Centro de salud" };
+  const buckets = { bomberos: [], policia: [], salud: [] };
   for (const [am, cat] of amenities) {
     const q = `[out:json][timeout:120];nwr["amenity"="${am}"](${S},${W},${N},${E});out tags center;`;
     const data = await overpass(q);

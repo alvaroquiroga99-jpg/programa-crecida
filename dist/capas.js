@@ -36,40 +36,6 @@
   };
 
   const CAPAS = {
-    rutas: {
-      titulo: "Rutas críticas",
-      chip: "🛣️ Rutas",
-      color: "#f59e0b",
-      action: "get_rutas",
-      lat: (d) => d.lat,
-      lon: (d) => d.lon,
-      nombre: (d) => d.nombre,
-      sub: (d) => `${d.ruta || ""} ${d.km || ""}`.trim(),
-      colorItem: (d) => d.color_estado,
-      detalle: (d) => [
-        ["Estado", d.estado_transito],
-        ["Tipo", d.tipo],
-        ["Localidad", d.localidad],
-        ["Observación", d.observacion],
-      ],
-    },
-    defensa: {
-      titulo: "Defensa Civil y refugios",
-      chip: "🛡️ Defensa Civil",
-      color: "#0ea5e9",
-      action: "get_defensa_civil",
-      lat: (d) => d.lat,
-      lon: (d) => d.lon,
-      nombre: (d) => d.nombre,
-      sub: (d) => d.tipo,
-      detalle: (d) => [
-        ["Localidad", d.localidad],
-        ["Capacidad", d.capacidad_personas ? `${d.capacidad_personas} personas` : ""],
-        ["Responsable", d.responsable],
-        ["Teléfono", d.telefono],
-        ["Estado", d.estado],
-      ],
-    },
     bomberos: {
       titulo: "Bomberos (OpenStreetMap)",
       chip: "🚒 Bomberos",
@@ -100,35 +66,6 @@
         ["Fuente", "OpenStreetMap"],
       ],
     },
-    farmacias: {
-      titulo: "Farmacias (OpenStreetMap)",
-      chip: "💊 Farmacias",
-      color: "#0d9488",
-      lat: (d) => d.lat,
-      lon: (d) => d.lon,
-      nombre: (d) => d.nombre,
-      sub: (d) => d.localidad || "",
-      detalle: (d) => [
-        ["Dirección", d.direccion],
-        ["Localidad", d.localidad],
-        ["Teléfono", d.telefono],
-        ["Fuente", "OpenStreetMap"],
-      ],
-    },
-    escuelas: {
-      titulo: "Escuelas · posibles refugios (OpenStreetMap)",
-      chip: "🏫 Refugios",
-      color: "#9333ea",
-      lat: (d) => d.lat,
-      lon: (d) => d.lon,
-      nombre: (d) => d.nombre,
-      sub: (d) => d.localidad || "",
-      detalle: (d) => [
-        ["Dirección", d.direccion],
-        ["Localidad", d.localidad],
-        ["Fuente", "OpenStreetMap · validar como refugio"],
-      ],
-    },
     focos: {
       titulo: "Focos de incendio (FIRMS)",
       chip: "🔥 Focos",
@@ -144,25 +81,6 @@
         ["Sensor", d.sensor],
         ["Confianza", d.confidence_pct != null ? `${d.confidence_pct}%` : d.confidence],
         ["Nota", d.warning_disclaimer],
-      ],
-    },
-    inundaciones: {
-      titulo: "Zonas de inundación",
-      chip: "🌊 Inundación",
-      color: "#2563eb",
-      action: "get_inundaciones",
-      lat: (d) => d.lat,
-      lon: (d) => d.lon,
-      nombre: (d) => d.nombre,
-      sub: (d) => d.nivel_riesgo,
-      colorItem: (d) => d.color_riesgo,
-      detalle: (d) => [
-        ["Río", d.rio_principal],
-        ["Departamento", d.departamento],
-        ["Riesgo", d.nivel_riesgo],
-        ["Caudal crítico", d.caudal_critico_m3s ? `${d.caudal_critico_m3s} m³/s` : ""],
-        ["Evacuación cercana", d.capacidad_evacuacion_cercana],
-        ["Observación", d.observacion],
       ],
     },
     efectores: {
@@ -194,7 +112,7 @@
     const cfg = CAPAS[id];
     let arr = null;
     if (id === "efectores") { arr = window.CRECIDA_EFECTORES || []; }
-    const DOC = { focos: "focos", bomberos: "osm_bomberos", policia: "osm_policia", farmacias: "osm_farmacias", escuelas: "osm_escuelas" };
+    const DOC = { focos: "focos", bomberos: "osm_bomberos", policia: "osm_policia" };
     if (arr === null && DOC[id] && window.firebase && window.firebase.firestore) {
       try {
         const snap = await window.firebase.firestore().collection("capas").doc(DOC[id]).get();

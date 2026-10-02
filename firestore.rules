@@ -68,5 +68,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Confirmaciones de recepción (el destinatario confirma desde el link del mensaje) ---
+    match /confirmaciones/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
   }
 }

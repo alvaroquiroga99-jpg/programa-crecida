@@ -251,7 +251,7 @@ async function loadRecipientsFromFirestore() {
       render();
     }
   } catch (error) {
-    addAudit("Firestore no disponible", "La app continúa con almacenamiento local.", "Firebase");
+    /* lectura de recipients requiere login; se usa almacenamiento local, sin registrar error */
   }
 }
 
@@ -784,7 +784,7 @@ function renderRecipients() {
                   <option ${row.status === "Sin novedad" ? "selected" : ""}>Sin novedad</option>
                   <option ${row.status === "Requiere apoyo" ? "selected" : ""}>Requiere apoyo</option>
                 </select>
-                ${row.phone ? `<a class="table-action wa-text-button" href="https://wa.me/${waPhone(row.phone)}?text=${encodeURIComponent(alertData.message)}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
+                ${row.phone ? `<a class="table-action wa-text-button" href="https://wa.me/${waPhone(row.phone)}?text=${encodeURIComponent(alertData.message + "\n\n✅ Confirmar recepción: " + linkConfirmacionApp(row))}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
                 <button class="table-action edit-text-button" data-edit-recipient="${row.id}" type="button">Editar</button>
                 <button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>
               </div>`
@@ -921,7 +921,7 @@ document.getElementById("distributeButton").addEventListener("click", () => {
   alertData.lastSync = `${currentTime()} h`;
   addAudit(
     "Alerta distribuida",
-    "WhatsApp y notificación de la app enviados a responsables de jurisdicciones afectadas.",
+    "Emails enviados con enlace de confirmación. WhatsApp disponible por destinatario.",
     "Operador provincial",
   );
   render();
@@ -1048,7 +1048,7 @@ alertForm.addEventListener("submit", (event) => {
   alertData.validUntil = validUntil;
   alertData.lastSync = `${now} h`;
   alertData.affected = affected;
-  alertData.message = `${alertData.level.toUpperCase()} - ${title.toUpperCase()}\n\nFuente: carga manual auditada\nID: ${alertData.id}\n\nZona afectada: ${affected.join(" - ")}.\nVigencia: ${validUntil}.\n\nAcción: ${directive}\n\nCONFIRMAR RECEPCIÓN EN LA APP`;
+  alertData.message = `${alertData.level.toUpperCase()} - ${title.toUpperCase()}\n\nFuente: carga manual auditada\nID: ${alertData.id}\n\nZona afectada: ${affected.join(" - ")}.\nVigencia: ${validUntil}.\n\nAcción: ${directive}\n\nPara confirmar la recepción, usá el enlace de este mensaje.`;
 
   resetJurisdictionRisks(affected, levelKey);
   selectedJurisdiction = getJurisdiction(affected[0] || selectedJurisdiction.name);
@@ -1072,7 +1072,7 @@ document.getElementById("simulateAlertButton").addEventListener("click", () => {
   alertData.validUntil = "Próximas 3 h";
   alertData.lastSync = `${currentTime()} h`;
   alertData.message =
-    "ALERTA ROJA SIMULADA\n\nFuente: Servicio Meteorológico Nacional\nID: ACP-SMN-TUC-ROJO\n\nFenómeno: lluvia intensa con riesgo de anegamiento.\nZona afectada: Simoca - Monteros - Leales.\n\nAcción: activar responsables, confirmar recepción y reportar disponibilidad operativa.\n\nCONFIRMAR RECEPCIÓN EN LA APP";
+    "ALERTA ROJA SIMULADA\n\nFuente: Servicio Meteorológico Nacional\nID: ACP-SMN-TUC-ROJO\n\nFenómeno: lluvia intensa con riesgo de anegamiento.\nZona afectada: Simoca - Monteros - Leales.\n\nAcción: activar responsables, confirmar recepción y reportar disponibilidad operativa.\n\nPara confirmar la recepción, usá el enlace de este mensaje.";
 
   const leales = jurisdictions.find((item) => item.name === "Leales");
   if (leales) {
@@ -1098,6 +1098,10 @@ loadRecipientsFromFirestore();
 syncHidroData({ silent: true });
 
 // --- Envío: helpers compartidos ---
+function linkConfirmacionApp(row) {
+  const base = location.origin;
+  return `${base}/confirmar.html?a=${encodeURIComponent(alertData.id || "")}&d=${encodeURIComponent(row.name || "")}&j=${encodeURIComponent(row.jurisdiction || "")}`;
+}
 function waPhone(p) {
   const d = String(p || "").replace(/\D/g, "");
   return d.startsWith("54") ? d : "549" + d;

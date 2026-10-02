@@ -1,22 +1,26 @@
-/* Programa CRECIDA — Envío de alertas (email vía Apps Script) */
+/* Programa CRECIDA — Envío de alertas (email vía Apps Script) con enlace de confirmación */
 (function () {
   "use strict";
   const MAIL_URL = window.CRECIDA_MAIL_URL || "";
   const MAIL_CLAVE = window.CRECIDA_MAIL_CLAVE || "crecida2026";
 
-  async function enviarEmails(destinatarios, asunto, cuerpo) {
+  function linkConfirmacion(alert, r) {
+    const base = window.CRECIDA_CONFIRM_BASE || location.origin;
+    const qs = `a=${encodeURIComponent(alert.id || "")}&d=${encodeURIComponent(r.name || "")}&j=${encodeURIComponent(r.jurisdiction || "")}`;
+    return `${base}/confirmar.html?${qs}`;
+  }
+
+  async function enviarUno(email, asunto, cuerpo) {
     if (!MAIL_URL) return { ok: false, motivo: "sin_url" };
     try {
       await fetch(MAIL_URL, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ clave: MAIL_CLAVE, destinatarios, asunto, cuerpo }),
+        body: JSON.stringify({ clave: MAIL_CLAVE, destinatarios: [email], asunto, cuerpo }),
       });
       return { ok: true };
-    } catch (e) {
-      return { ok: false, motivo: e.message };
-    }
+    } catch (e) { return { ok: false, motivo: e.message }; }
   }
 
   function afectados() {
@@ -33,17 +37,20 @@
     btn.addEventListener("click", async () => {
       const { alert, lista } = afectados();
       if (!alert) return;
-      const emails = lista.map((r) => r.email).filter(Boolean);
-      if (!emails.length) {
+      const conEmail = lista.filter((r) => r.email);
+      if (!conEmail.length) {
         if (window.addAudit) window.addAudit("Envío de email", "No hay destinatarios con email cargados.", "Programa CRECIDA");
         return;
       }
-      const r = await enviarEmails(emails, `[CRECIDA] ${alert.level} — ${alert.title}`, alert.message);
-      const msg = r.ok
-        ? `📧 Email enviado a ${emails.length} destinatario(s).`
-        : r.motivo === "sin_url"
-          ? "Email no configurado todavía (falta la URL de envío)."
-          : "No se pudo enviar email: " + r.motivo;
+      let ok = 0, fail = 0, motivo = "";
+      for (const r of conEmail) {
+        const cuerpo = `${alert.message}\n\n— — —\n✅ Para confirmar la recepción, abrí este enlace:\n${linkConfirmacion(alert, r)}`;
+        const res = await enviarUno(r.email, `[CRECIDA] ${alert.level} — ${alert.title}`, cuerpo);
+        if (res.ok) ok++; else { fail++; motivo = res.motivo; }
+      }
+      const msg = fail
+        ? (motivo === "sin_url" ? "Email no configurado todavía (falta la URL de envío)." : `Se enviaron ${ok}, fallaron ${fail} (${motivo}).`)
+        : `📧 Email enviado a ${ok} destinatario(s), con enlace de confirmación.`;
       if (window.addAudit) window.addAudit("Envío de email", msg, "Programa CRECIDA");
       if (window.showToast) window.showToast(msg);
     });
