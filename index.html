@@ -11,6 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -115,8 +116,9 @@
       <section class="workspace" aria-label="Superficie de coordinación">
         <nav class="tabs" aria-label="Vistas principales">
           <button class="tab active" data-view="operation" type="button">Operación</button>
-          <button class="tab" data-view="contacts" type="button">Destinatarios</button>
+          <button class="tab" data-view="contacts" type="button">Usuarios</button>
           <button class="tab" data-view="messages" type="button">Mensajes</button>
+          <button class="tab" data-view="alertas" type="button">Alertas del día</button>
           <button class="tab" data-view="audit" type="button">Trazabilidad</button>
         </nav>
 
@@ -217,7 +219,7 @@
           <div class="view-header">
             <div>
               <p class="eyebrow">Distribución inteligente</p>
-              <h2>Destinatarios por jurisdicción</h2>
+              <h2>Usuarios registrados</h2>
             </div>
             <span class="quiet-pill" id="recipientCount">0 responsables</span>
           </div>
@@ -267,7 +269,7 @@
                   <th>Organismo</th>
                   <th>Función</th>
                   <th>Canal</th>
-                  <th>Estado</th>
+                  <th>Alta</th>
                   <th>Último evento</th>
                   <th>Acción</th>
                 </tr>
@@ -308,6 +310,17 @@
               </div>
             </article>
           </div>
+        </section>
+
+        <section class="view" id="alertasView">
+          <div class="view-header">
+            <div>
+              <p class="eyebrow">Recepción por evento</p>
+              <h2>Alertas del día</h2>
+            </div>
+            <span class="quiet-pill">Confirmaciones en vivo</span>
+          </div>
+          <div id="alertasBoard"></div>
         </section>
 
         <section class="view" id="auditView">
@@ -373,15 +386,18 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="map-data.js"></script>
     <script src="ina.js"></script>
     <script src="app.js"></script>
     <script src="efectores.js"></script>
+    <script src="mapa.js"></script>
     <script src="capas.js"></script>
     <script src="reglas.js"></script>
     <script src="motor.js"></script>
     <script src="envio.js"></script>
     <script src="recepcion.js"></script>
+    <script src="alertas.js"></script>
     <script>
       (function () {
         const modal = document.getElementById("alertModal");

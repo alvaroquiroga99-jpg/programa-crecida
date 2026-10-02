@@ -10,14 +10,31 @@
     return `${base}/confirmar.html?${qs}`;
   }
 
-  async function enviarUno(email, asunto, cuerpo) {
+  function htmlEmail(alert, link) {
+    const msg = String(alert.message || "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+    return `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">` +
+      `<div style="background:#0e6e8c;color:#fff;padding:14px 18px;border-radius:12px 12px 0 0;font-weight:700;letter-spacing:.02em">PROGRAMA CRECIDA · Alerta</div>` +
+      `<div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:18px">` +
+      `<div style="line-height:1.5;font-size:14px">${msg}</div>` +
+      `<p style="text-align:center;margin:22px 0 10px">` +
+      `<a href="${link}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-weight:700;padding:14px 26px;border-radius:10px;font-size:15px">✅ Confirmar recepción</a>` +
+      `</p>` +
+      `<p style="font-size:12px;color:#64748b;margin-top:14px">Si el botón no abre, copiá y pegá este enlace:<br>` +
+      `<a href="${link}" style="color:#0e6e8c">${link}</a></p>` +
+      `<p style="font-size:11px;color:#94a3b8;border-top:1px solid #eef2f7;padding-top:10px;margin-top:14px">Sistema operativo de alerta temprana · DGIME-SIPROSA</p>` +
+      `</div></div>`;
+  }
+
+  async function enviarUno(email, asunto, cuerpo, html) {
     if (!MAIL_URL) return { ok: false, motivo: "sin_url" };
     try {
       await fetch(MAIL_URL, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ clave: MAIL_CLAVE, destinatarios: [email], asunto, cuerpo }),
+        body: JSON.stringify({ clave: MAIL_CLAVE, destinatarios: [email], asunto, cuerpo, html }),
       });
       return { ok: true };
     } catch (e) { return { ok: false, motivo: e.message }; }
@@ -27,9 +44,25 @@
     const est = window.CRECIDA_estado ? window.CRECIDA_estado() : null;
     if (!est || !est.alert) return { alert: null, lista: [] };
     const af = est.alert.affected || [];
-    const lista = est.destinatarios || [];
-    const enZona = lista.filter((r) => af.includes(r.jurisdiction));
-    return { alert: est.alert, lista: enZona.length ? enZona : lista };
+    const activos = (est.destinatarios || []).filter((r) => r.estadoAlta !== "Pendiente");
+    const enZona = activos.filter((r) => af.includes(r.jurisdiction));
+    return { alert: est.alert, lista: enZona.length ? enZona : activos };
+  }
+
+  async function registrarAlerta(alert, objetivo) {
+    try {
+      if (!(window.firebase && window.firebase.firestore) || !alert.id) return;
+      await window.firebase.firestore().collection("alertas").doc(alert.id).set({
+        id: alert.id,
+        nivel: alert.level || "",
+        levelKey: alert.levelKey || "",
+        titulo: alert.title || alert.id,
+        departamentos: alert.affected || [],
+        objetivo: objetivo,
+        canal: "email + whatsapp",
+        emitidaEn: window.firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {}
   }
 
   const btn = document.getElementById("distributeButton");
@@ -42,10 +75,12 @@
         if (window.addAudit) window.addAudit("Envío de email", "No hay destinatarios con email cargados.", "Programa CRECIDA");
         return;
       }
+      registrarAlerta(alert, lista.length);
       let ok = 0, fail = 0, motivo = "";
       for (const r of conEmail) {
-        const cuerpo = `${alert.message}\n\n— — —\n✅ Para confirmar la recepción, abrí este enlace:\n${linkConfirmacion(alert, r)}`;
-        const res = await enviarUno(r.email, `[CRECIDA] ${alert.level} — ${alert.title}`, cuerpo);
+        const link = linkConfirmacion(alert, r);
+        const cuerpo = `${alert.message}\n\n— — —\n✅ Para confirmar la recepción, abrí este enlace:\n${link}`;
+        const res = await enviarUno(r.email, `[CRECIDA] ${alert.level} — ${alert.title}`, cuerpo, htmlEmail(alert, link));
         if (res.ok) ok++; else { fail++; motivo = res.motivo; }
       }
       const msg = fail

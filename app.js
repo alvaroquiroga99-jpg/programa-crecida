@@ -38,6 +38,7 @@ const defaultExtraRecipients = [
     organization: "Higiene y Seguridad",
     channel: "WhatsApp",
     status: "Pendiente",
+    estadoAlta: "Activo",
     last: "Carga inicial",
   },
 ];
@@ -240,19 +241,24 @@ function initFirebase() {
   }
 }
 
-async function loadRecipientsFromFirestore() {
+let _destSeeded = false;
+function loadRecipientsFromFirestore() {
   if (!firebaseEnabled || !firestoreDb) return;
   try {
-    const snapshot = await firestoreDb.collection("recipients").orderBy("updatedAt", "desc").limit(250).get();
-    const remoteRecipients = snapshot.docs.map((doc) => ({ firebaseId: doc.id, ...doc.data() }));
-    if (remoteRecipients.length) {
-      extraRecipients = remoteRecipients;
-      localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
-      render();
-    }
-  } catch (error) {
-    /* lectura de recipients requiere login; se usa almacenamiento local, sin registrar error */
-  }
+    firestoreDb.collection("destinatarios").onSnapshot(
+      (snapshot) => {
+        if (snapshot.empty) {
+          if (!_destSeeded) { _destSeeded = true; saveRecipientsToFirestore(); }
+          return;
+        }
+        _destSeeded = true;
+        extraRecipients = snapshot.docs.map((doc) => ({ firebaseId: doc.id, ...doc.data() }));
+        localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
+        render();
+      },
+      () => {},
+    );
+  } catch (error) {}
 }
 
 async function saveRecipientsToFirestore() {
@@ -261,8 +267,8 @@ async function saveRecipientsToFirestore() {
     const batch = firestoreDb.batch();
     extraRecipients.forEach((recipient) => {
       const docRef = recipient.firebaseId
-        ? firestoreDb.collection("recipients").doc(recipient.firebaseId)
-        : firestoreDb.collection("recipients").doc();
+        ? firestoreDb.collection("destinatarios").doc(recipient.firebaseId)
+        : firestoreDb.collection("destinatarios").doc();
       recipient.firebaseId = docRef.id;
       batch.set(
         docRef,
@@ -276,7 +282,7 @@ async function saveRecipientsToFirestore() {
     await batch.commit();
     localStorage.setItem(storageKey, JSON.stringify(extraRecipients));
   } catch (error) {
-    addAudit("Firestore no guardó", "Se conserva copia local de responsables.", "Firebase");
+    /* fallback: queda copia local */
   }
 }
 
@@ -302,6 +308,7 @@ function allRecipients() {
     id: String(index),
     editable: true,
     ...recipient,
+    estadoAlta: recipient.estadoAlta || "Activo",
     response: statusForOrg(recipient.status),
   }));
 
@@ -412,6 +419,9 @@ function deleteRecipient(index) {
   const recipient = extraRecipients[index];
   if (!recipient) return;
 
+  if (recipient.firebaseId && firebaseEnabled && firestoreDb) {
+    firestoreDb.collection("destinatarios").doc(recipient.firebaseId).delete().catch(() => {});
+  }
   extraRecipients.splice(index, 1);
   if (editingRecipientIndex === index) {
     cancelRecipientEdit();
@@ -424,6 +434,16 @@ function deleteRecipient(index) {
     `${recipient.name} fue eliminado de ${recipient.organization} en ${recipient.jurisdiction}.`,
     "Carga operativa",
   );
+  render();
+}
+
+function approveRecipient(index) {
+  const recipient = extraRecipients[index];
+  if (!recipient) return;
+  recipient.estadoAlta = "Activo";
+  recipient.last = `${currentTime()} h`;
+  saveExtraRecipients();
+  addAudit("Usuario aprobado", `${recipient.name} (${recipient.jurisdiction}) quedó ACTIVO para recibir alertas.`, "Alta de usuarios");
   render();
 }
 
@@ -495,138 +515,8 @@ function renderAlert() {
 }
 
 function renderMap() {
-  provinceMap.innerHTML = "";
-
-  const svg = makeSvgElement("svg", {
-    class: "tucuman-svg",
-    viewBox: "0 0 460 640",
-    role: "img",
-    "aria-label": "Departamentos de Tucumán con severidad y confirmaciones",
-  });
-
-  const defs = makeSvgElement("defs");
-  const pattern = makeSvgElement("pattern", {
-    id: "alertHatch",
-    width: "10",
-    height: "10",
-    patternUnits: "userSpaceOnUse",
-    patternTransform: "rotate(35)",
-  });
-  pattern.appendChild(makeSvgElement("rect", { width: "10", height: "10", fill: "rgba(215,107,47,0.18)" }));
-  pattern.appendChild(
-    makeSvgElement("line", {
-      x1: "0",
-      y1: "0",
-      x2: "0",
-      y2: "10",
-      stroke: "rgba(156,67,43,0.28)",
-      "stroke-width": "4",
-    }),
-  );
-  defs.appendChild(pattern);
-  svg.appendChild(defs);
-
-  const departmentsGroup = makeSvgElement("g", { class: "department-layer" });
-  departmentData.forEach((department) => {
-    const jurisdiction = getJurisdiction(department.name);
-    const path = makeSvgElement("path", {
-      d: department.path,
-      class: `department risk-${jurisdiction.risk}${selectedJurisdiction.name === department.name ? " selected" : ""}`,
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${department.name}. Riesgo ${jurisdiction.risk}. Estado ${jurisdiction.status}.`,
-    });
-
-    path.addEventListener("click", () => selectJurisdiction(department.name));
-    path.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectJurisdiction(department.name);
-      }
-    });
-
-    departmentsGroup.appendChild(path);
-  });
-  svg.appendChild(departmentsGroup);
-
-  const alertAreaPath = createAlertAreaPath(alertData.affected);
-  if (alertAreaPath) {
-    const alertArea = makeSvgElement("path", {
-      class: `alert-area alert-area-${alertData.levelKey}`,
-      d: alertAreaPath,
-    });
-    svg.appendChild(alertArea);
-  }
-
-  const hidroGroup = makeSvgElement("g", { class: "hydro-layer" });
-  hidroStations.forEach((station) => {
-    const [x, y] = latLonToSvg(station.lat, station.lon);
-    const isCrecida = station.tendencia === "crece" || station.nivel_alerta.toLowerCase().includes("alerta");
-    const marker = makeSvgElement("g", {
-      class: `hydro-marker ${isCrecida ? "hydro-alert" : "hydro-normal"}`,
-      transform: `translate(${x} ${y})`,
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${station.nombre}. ${station.nivel_alerta}. Altura ${station.altura_m || "--"} metros.`,
-    });
-    marker.appendChild(makeSvgElement("circle", { class: "hydro-pulse", r: "13" }));
-    marker.appendChild(makeSvgElement("circle", { class: "hydro-core", r: "7" }));
-    hidroGroup.appendChild(marker);
-  });
-  svg.appendChild(hidroGroup);
-
-  const markersGroup = makeSvgElement("g", { class: "marker-layer" });
-  departmentData.forEach((department) => {
-    const jurisdiction = getJurisdiction(department.name);
-
-    if (jurisdiction.risk === "green" && selectedJurisdiction.name !== department.name) {
-      return;
-    }
-
-    const [x, y] = department.centroid;
-    const marker = makeSvgElement("g", {
-      class: `map-marker ${responseClass(jurisdiction.response)}`,
-      transform: `translate(${x} ${y})`,
-      tabindex: "0",
-      role: "button",
-      "aria-label": `${department.name}. ${jurisdiction.confirmed} de ${jurisdiction.contacts} confirmaciones.`,
-    });
-    marker.appendChild(makeSvgElement("circle", { class: "marker-hit", r: "24" }));
-    marker.appendChild(makeSvgElement("circle", { class: "marker-core", r: "15" }));
-
-    const text = makeSvgElement("text", { class: "marker-text", y: "1" });
-    text.textContent = jurisdiction.contacts ? `${jurisdiction.confirmed}/${jurisdiction.contacts}` : "";
-    marker.appendChild(text);
-
-    marker.addEventListener("click", () => selectJurisdiction(department.name));
-    marker.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectJurisdiction(department.name);
-      }
-    });
-
-    markersGroup.appendChild(marker);
-
-    const shouldLabel =
-      jurisdiction.risk === "red" ||
-      jurisdiction.risk === "orange" ||
-      selectedJurisdiction.name === department.name;
-
-    if (shouldLabel) {
-      const [dx, dy] = labelOffsets[department.name] || [20, -18];
-      const label = makeSvgElement("text", {
-        class: "map-label",
-        x: String(x + dx),
-        y: String(y + dy),
-        "text-anchor": dx < 0 ? "end" : "start",
-      });
-      label.textContent = department.name;
-      markersGroup.appendChild(label);
-    }
-  });
-  svg.appendChild(markersGroup);
-  provinceMap.appendChild(svg);
+  // El mapa ahora es Leaflet (ver mapa.js). Solo recoloreamos por riesgo.
+  if (window.CRECIDA_MAPA) window.CRECIDA_MAPA.recolorear();
 }
 
 function selectJurisdiction(name) {
@@ -758,7 +648,7 @@ function renderConfirmations() {
 function renderRecipients() {
   const rows = allRecipients();
 
-  document.getElementById("recipientCount").textContent = `${rows.length} responsables`;
+  document.getElementById("recipientCount").textContent = `${rows.length} usuarios`;
   recipientRows.innerHTML = "";
   rows.forEach((row) => {
     const tr = document.createElement("tr");
@@ -771,19 +661,13 @@ function renderRecipients() {
       <td>${row.organization}</td>
       <td>${row.role}</td>
       <td>${row.channel}</td>
-      <td><span class="status-token ${responseClass(row.response)}">${row.status}</span></td>
+      <td><span class="status-token ${row.estadoAlta === "Activo" ? "state-ok" : "state-escalate"}">${row.estadoAlta || "Pendiente"}</span></td>
       <td>${row.last}</td>
       <td>
         ${
           row.editable
             ? `<div class="table-actions">
-                <select class="status-select" data-status-recipient="${row.id}" aria-label="Estado de ${row.name}">
-                  <option ${row.status === "Pendiente" ? "selected" : ""}>Pendiente</option>
-                  <option ${row.status === "Recibido" ? "selected" : ""}>Recibido</option>
-                  <option ${row.status === "En seguimiento" ? "selected" : ""}>En seguimiento</option>
-                  <option ${row.status === "Sin novedad" ? "selected" : ""}>Sin novedad</option>
-                  <option ${row.status === "Requiere apoyo" ? "selected" : ""}>Requiere apoyo</option>
-                </select>
+                ${row.estadoAlta !== "Activo" ? `<button class="table-action approve-text-button" data-approve-recipient="${row.id}" type="button">Aprobar</button>` : ""}
                 ${row.phone ? `<a class="table-action wa-text-button" href="https://wa.me/${waPhone(row.phone)}?text=${encodeURIComponent(alertData.message + "\n\n✅ Confirmar recepción: " + linkConfirmacionApp(row))}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
                 <button class="table-action edit-text-button" data-edit-recipient="${row.id}" type="button">Editar</button>
                 <button class="table-action danger-text-button" data-delete-recipient="${row.id}" type="button">Eliminar</button>
@@ -960,6 +844,7 @@ recipientForm.addEventListener("submit", (event) => {
     organization: formData.get("organization"),
     channel: "WhatsApp",
     status: "Pendiente",
+    estadoAlta: "Pendiente",
     last: `${currentTime()} h`,
   };
 
@@ -993,6 +878,12 @@ recipientRows.addEventListener("click", (event) => {
   const editButton = event.target.closest("[data-edit-recipient]");
   if (editButton) {
     editRecipient(Number(editButton.dataset.editRecipient));
+    return;
+  }
+
+  const approveButton = event.target.closest("[data-approve-recipient]");
+  if (approveButton) {
+    approveRecipient(Number(approveButton.dataset.approveRecipient));
     return;
   }
 
@@ -1107,3 +998,6 @@ function waPhone(p) {
   return d.startsWith("54") ? d : "549" + d;
 }
 window.CRECIDA_estado = () => ({ alert: alertData, destinatarios: extraRecipients });
+window.getJurisdiction = getJurisdiction;
+window.selectJurisdiction = selectJurisdiction;
+window.CRECIDA_selectedName = () => selectedJurisdiction.name;

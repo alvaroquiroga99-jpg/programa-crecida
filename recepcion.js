@@ -13,10 +13,17 @@
     if (!ackList || !window.CRECIDA_estado) return;
     const estado = window.CRECIDA_estado();
     const alert = estado && estado.alert;
-    const dests = (estado && estado.destinatarios) || [];
+    const todos = ((estado && estado.destinatarios) || []).filter((r) => r.estadoAlta !== "Pendiente");
     const sum = document.getElementById("ackSummary");
     const prog = document.getElementById("ackProgress");
     const id = alert && alert.id;
+    // Solo los destinatarios de las jurisdicciones afectadas por la alerta activa
+    const af = (alert && alert.affected) || [];
+    let dests = todos;
+    if (id && af.length) {
+      const enZona = todos.filter((r) => af.includes(r.jurisdiction));
+      dests = enZona.length ? enZona : todos;
+    }
 
     const porSlug = {};
     confs.filter((c) => id && c.alerta === id).forEach((c) => { porSlug[c.destSlug] = c; });

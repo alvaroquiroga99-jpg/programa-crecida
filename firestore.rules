@@ -75,5 +75,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- Destinatarios compartidos (demo sin login; luego se restringe por rol) ---
+    match /destinatarios/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // --- Alertas emitidas (registro del día; las escribe la app al distribuir) ---
+    match /alertas/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
   }
 }

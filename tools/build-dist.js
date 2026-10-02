@@ -10,12 +10,14 @@ const files = [
   "map-data.js",
   "ina.js",
   "efectores.js",
+  "mapa.js",
   "firebase-config.js",
   "capas.js",
   "reglas.js",
   "motor.js",
   "envio.js",
   "recepcion.js",
+  "alertas.js",
   "confirmar.html",
 ];
 
@@ -31,9 +33,19 @@ const v = Date.now().toString(36);
 const idxPath = path.join(dist, "index.html");
 if (fs.existsSync(idxPath)) {
   let html = fs.readFileSync(idxPath, "utf8");
-  ["styles.css", "app.js", "map-data.js", "ina.js", "efectores.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js", "envio.js", "recepcion.js"]
+  ["styles.css", "app.js", "map-data.js", "ina.js", "efectores.js", "mapa.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js", "envio.js", "recepcion.js", "alertas.js"]
     .forEach((f) => { html = html.split('"' + f + '"').join('"' + f + "?v=" + v + '"'); });
   fs.writeFileSync(idxPath, html);
+}
+
+// Copiar datos geográficos (GeoJSON) a dist/data/
+const dataSrc = path.join(root, "data");
+const dataDst = path.join(dist, "data");
+if (fs.existsSync(dataSrc)) {
+  fs.mkdirSync(dataDst, { recursive: true });
+  for (const f of fs.readdirSync(dataSrc)) {
+    if (/\.(geojson|json)$/i.test(f)) fs.copyFileSync(path.join(dataSrc, f), path.join(dataDst, f));
+  }
 }
 
 console.log(`Built ${files.length} frontend files into ${dist} (v=${v})`);

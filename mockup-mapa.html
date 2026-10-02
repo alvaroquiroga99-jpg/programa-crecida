@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CRECIDA · Mockups de mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;height:100%;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1220}
+  #map{position:absolute;inset:0;top:52px}
+  .bar{position:absolute;top:0;left:0;right:0;height:52px;background:#0e2233;display:flex;gap:8px;align-items:center;padding:0 14px;z-index:1000;color:#fff}
+  .bar b{font-size:14px;margin-right:8px}
+  .bar button{border:1px solid #2b4763;color:#cfe3f3;background:#12324a;border-radius:999px;padding:7px 14px;font:600 13px system-ui;cursor:pointer}
+  .bar button.on{background:#16a34a;border-color:#16a34a;color:#fff}
+  .hint{position:absolute;bottom:14px;left:14px;z-index:1000;background:rgba(14,34,51,.9);color:#cfe3f3;font:12px system-ui;padding:8px 12px;border-radius:10px;max-width:240px}
+  /* Pines animados */
+  .pin{position:relative;width:34px;height:34px;transform:translate(-50%,-50%)}
+  .pin .pulse{position:absolute;inset:0;border-radius:50%;background:var(--c);opacity:.55;animation:pp 1.7s ease-out infinite}
+  .pin .dot{position:absolute;inset:6px;border-radius:50%;background:var(--c);border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  @keyframes pp{0%{transform:scale(.6);opacity:.6}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}
+  .dotmini{width:14px;height:14px;border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+</style>
+</head><body>
+<div class="bar">
+  <b>CRECIDA · Mapa (mockups)</b>
+  <button id="b1" class="on">1 · Calles</button>
+  <button id="b2">2 · Relieve / Topográfico</button>
+  <button id="b3">3 · Satélite</button>
+</div>
+<div id="map"></div>
+<div class="hint">Probá: rueda del mouse para <b>zoom</b>, arrastrar para mover. Los pines con anillo "laten". Cambiá el estilo con los botones de arriba.</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+function go(){ if(!window.L){return setTimeout(go,60);} init(); }
+function init(){
+  var map=L.map('map',{zoomControl:true}).setView([-26.95,-65.35],8);
+  var bases={
+    1:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'}),
+    2:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'}),
+    3:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'© Esri'})
+  };
+  var actual=bases[1].addTo(map);
+  function set(n){ map.removeLayer(actual); actual=bases[n].addTo(map);
+    [1,2,3].forEach(function(i){document.getElementById('b'+i).className=(i===n?'on':'');}); }
+  document.getElementById('b1').onclick=function(){set(1)};
+  document.getElementById('b2').onclick=function(){set(2)};
+  document.getElementById('b3').onclick=function(){set(3)};
+
+  var pts=[
+    {c:'#dc2626',ic:'🏥',n:'Hospital — Capital',lat:-26.83,lon:-65.20,pulse:1},
+    {c:'#ef4444',ic:'🚒',n:'Bomberos — Yerba Buena',lat:-26.81,lon:-65.32,pulse:1},
+    {c:'#1d4ed8',ic:'🚓',n:'Comisaría — Simoca',lat:-27.26,lon:-65.35,pulse:1},
+    {c:'#f59e0b',ic:'🌊',n:'Río Gastona — 1.99 m ▲ (crece)',lat:-27.40,lon:-65.57,pulse:1},
+    {c:'#16a34a',ic:'',n:'CAPS Monteros',lat:-27.16,lon:-65.49},
+    {c:'#16a34a',ic:'',n:'CAPS Concepción',lat:-27.34,lon:-65.59},
+    {c:'#16a34a',ic:'',n:'CAPS Famaillá',lat:-27.05,lon:-65.40},
+    {c:'#0ea5e9',ic:'🌊',n:'Río Salí — 0.84 m',lat:-26.95,lon:-65.22}
+  ];
+  pts.forEach(function(p){
+    var icon;
+    if(p.ic){ icon=L.divIcon({className:'',html:'<div class="pin" style="--c:'+p.c+'">'+(p.pulse?'<span class="pulse"></span>':'')+'<span class="dot">'+p.ic+'</span></div>',iconSize:[34,34]}); }
+    else { icon=L.divIcon({className:'',html:'<div class="dotmini" style="background:'+p.c+'"></div>',iconSize:[14,14]}); }
+    L.marker([p.lat,p.lon],{icon:icon}).addTo(map).bindPopup('<b>'+p.n+'</b>');
+  });
+}
+go();
+</script>
+</body></html>

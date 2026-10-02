@@ -140,6 +140,7 @@
 
   // ── Dibujar las capas activas sobre el SVG que ya armó render() ─────
   function dibujarCapas() {
+    return; // el mapa ahora es Leaflet (ver mapa.js); los marcadores se dibujan en alternarCapa
     const cont = document.getElementById("provinceMap");
     if (!cont) return;
     const svg = cont.querySelector("svg");
@@ -151,23 +152,28 @@
       const st = estado[id];
       if (!st.activa || !st.items) return;
 
+      const icono = ((CAPAS[id].chip || "").trim().split(/\s+/)[0]) || "";
+      const pocos = st.items.length <= 60; // capas con pocos puntos -> ícono grande + pulso
       st.items.forEach((p) => {
         const [x, y] = window.latLonToSvg(p.lat, p.lon);
         const m = window.makeSvgElement("g", {
-          class: "capa-marker",
+          class: "capa-marker" + (pocos ? " es-icono" : ""),
           transform: `translate(${x} ${y})`,
           tabindex: "0",
           role: "button",
         });
-        m.appendChild(
-          window.makeSvgElement("circle", {
-            r: "6",
-            fill: p.color,
-            stroke: "#0b1220",
-            "stroke-width": "1.5",
-            "fill-opacity": "0.9",
-          }),
-        );
+        if (pocos) {
+          m.appendChild(window.makeSvgElement("circle", { class: "capa-halo", r: "11", fill: p.color }));
+          m.appendChild(window.makeSvgElement("circle", { class: "capa-dot", r: "12", fill: p.color, stroke: "#ffffff", "stroke-width": "2.5" }));
+          if (icono) {
+            const t = window.makeSvgElement("text", { class: "capa-ic", x: "0", y: "0.5", "text-anchor": "middle", "dominant-baseline": "central" });
+            t.textContent = icono;
+            m.appendChild(t);
+          }
+        } else {
+          m.appendChild(window.makeSvgElement("circle", { class: "capa-halo capa-halo-soft", r: "5", fill: p.color }));
+          m.appendChild(window.makeSvgElement("circle", { class: "capa-dot", r: "6", fill: p.color, stroke: "#ffffff", "stroke-width": "1.5" }));
+        }
         const title = window.makeSvgElement("title");
         title.textContent = `${p.nombre}${p.sub ? " · " + p.sub : ""}`;
         m.appendChild(title);
@@ -248,6 +254,15 @@
       } finally {
         st.cargando = false;
         chipEl.classList.remove("cargando");
+      }
+    }
+    if (window.CRECIDA_MAPA) {
+      if (st.activa && st.items) {
+        const icono = ((CAPAS[id].chip || "").trim().split(/\s+/)[0]) || "";
+        const pocos = st.items.length <= 60;
+        window.CRECIDA_MAPA.setCapa(id, st.items, { color: CAPAS[id].color, icono: icono, pocos: pocos, onClick: (p) => abrirInspector(id, p) });
+      } else {
+        window.CRECIDA_MAPA.clearCapa(id);
       }
     }
     if (window.render) window.render();
