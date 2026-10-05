@@ -164,13 +164,20 @@ async function correr() {
 
   try {
     const osm = await traerOSM();
+    const notasOsm = [];
     for (const [cat, items] of Object.entries(osm)) {
+      if (!items.length) {
+        // OSM/Overpass devolvió vacío para esta categoría: NO pisar datos buenos.
+        notasOsm.push(`${cat}:0(conservado)`);
+        continue;
+      }
       await db.collection("capas").doc("osm_" + cat).set({
         items, total: items.length, origen: "OpenStreetMap",
         actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
       });
+      notasOsm.push(`${cat}:${items.length}`);
     }
-    resumen.osm = Object.entries(osm).map(([k, v]) => `${k}:${v.length}`).join(" ");
+    resumen.osm = notasOsm.join(" ");
   } catch (e) { resumen.osm = "ERROR: " + e.message; }
 
   await db.collection("sistema").doc("vigia").set(resumen, { merge: true });
