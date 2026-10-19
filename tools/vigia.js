@@ -44,6 +44,71 @@ async function traerACP(token) {
   return { total_pais: Array.isArray(data) ? data.length : 0, tucuman: tuc };
 }
 
+// Niveles del SMN (según su función convertir()): <=2 = sin alerta, 3 = amarillo, 4 = naranja, 5 = rojo
+const NIVEL_COLOR = { 3: "amarillo", 4: "naranja", 5: "rojo" };
+// Nombres de zona amigables para Tucumán (los oficiales del SMN confunden: "SANTA MARIA" es de Catamarca).
+const ZONA_AMIGABLE = {
+  3373: "Tucumán (llanura)",
+  3375: "Valles Calchaquíes (Amaicha, Colalao)",
+  3380: "Tafí del Valle y Cumbres Calchaquíes",
+  3388: "Puna (Antofagasta de la Sierra)",
+};
+
+// Alertas por color (SAT) del SMN. Une la definición de áreas (georef/area, con
+// nombre y provincias) con las alertas vigentes (warning/alert/area) por area_id,
+// y se queda con las áreas que incluyen la provincia de Tucumán.
+async function traerAlertas(token) {
+  const H = { headers: { Accept: "application/json", Authorization: "JWT " + token } };
+  const [areas, alertas] = await Promise.all([
+    fetch("https://ws1.smn.gob.ar/v1/georef/area", H).then((r) => r.json()),
+    fetch("https://ws1.smn.gob.ar/v1/warning/alert/area?mode=alert", H).then((r) => r.json()),
+  ]);
+  if (!Array.isArray(areas) || !Array.isArray(alertas)) throw new Error("respuesta SMN inesperada");
+
+  const info = new Map();
+  areas.forEach((a) => {
+    const provs = (a.provinces || []).map((p) => p.name);
+    info.set(a.id, { zona: a.name, provincias: provs, enTuc: provs.some((n) => /tucum/i.test(n)) });
+  });
+
+  const tuc = [];
+  alertas.forEach((m) => {
+    const meta = info.get(m.area_id);
+    if (!meta || !meta.enTuc) return;
+    const dias = (m.warnings || []).map((w) => ({ fecha: w.date, nivel: w.max_level || 1 }));
+    const nivelMax = dias.reduce((mx, d) => Math.max(mx, d.nivel || 1), 1);
+    const reportes = (m.reports || []).map((r) => {
+      const l0 = (r.levels && r.levels[0]) || {};
+      return {
+        event_id: r.event_id,
+        nivel: l0.level || null,
+        color: NIVEL_COLOR[l0.level] || "",
+        descripcion: (l0.description || "").trim(),
+        instruccion: (l0.instruction || "").trim(),
+      };
+    });
+    // Solo informar si hay alerta real: nivel >= 3 (amarillo) en algún día o reporte vigente
+    const reportesReales = reportes.filter((r) => (r.nivel || 0) >= 3);
+    if (nivelMax < 3 && !reportesReales.length) return;
+    const nivelFinal = Math.max(nivelMax, ...reportes.map((r) => r.nivel || 0), 0) || nivelMax;
+    tuc.push({
+      area_id: m.area_id,
+      zona: ZONA_AMIGABLE[m.area_id] || meta.zona,
+      provincias: meta.provincias,
+      nivel: nivelFinal,
+      color: NIVEL_COLOR[nivelFinal] || "",
+      dias,
+      reportes,
+      titulo: reportes[0] && reportes[0].descripcion
+        ? reportes[0].descripcion.split(".")[0].slice(0, 140)
+        : `Alerta ${NIVEL_COLOR[nivelFinal] || ""} en ${meta.zona}`,
+    });
+  });
+  // más graves primero
+  tuc.sort((a, b) => b.nivel - a.nivel);
+  return { total_pais: alertas.length, tucuman: tuc };
+}
+
 async function traerFIRMS() {
   const key = process.env.NASA_MAP_KEY;
   if (!key) return { skip: "sin NASA_MAP_KEY" };
@@ -142,14 +207,32 @@ async function traerOSM() {
 
 async function correr() {
   const resumen = { ts: new Date().toISOString() };
-  try {
-    const token = await tokenSMN();
-    const acp = await traerACP(token);
-    await db.collection("smn").doc("acp").set({
-      ...acp, actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    resumen.acp = `${acp.tucuman.length} en Tucumán (${acp.total_pais} país)`;
-  } catch (e) { resumen.acp = "ERROR: " + e.message; }
+
+  let token = null;
+  try { token = await tokenSMN(); } catch (e) { resumen.token = "ERROR: " + e.message; }
+
+  if (token) {
+    // Avisos a Corto Plazo (ACP)
+    try {
+      const acp = await traerACP(token);
+      await db.collection("smn").doc("acp").set({
+        ...acp, actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      resumen.acp = `${acp.tucuman.length} en Tucumán (${acp.total_pais} país)`;
+    } catch (e) { resumen.acp = "ERROR: " + e.message; }
+
+    // Alertas por color (SAT): viento, lluvia, calor, etc. con anticipación
+    try {
+      const al = await traerAlertas(token);
+      await db.collection("smn").doc("alertas").set({
+        ...al, actualizado_en: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      resumen.alertas = `${al.tucuman.length} alerta(s) por color en Tucumán (${al.total_pais} áreas país)`;
+    } catch (e) { resumen.alertas = "ERROR: " + e.message; }
+  } else {
+    resumen.acp = "sin token";
+    resumen.alertas = "sin token";
+  }
 
   try {
     const f = await traerFIRMS();
@@ -162,7 +245,9 @@ async function correr() {
     } else resumen.focos = f.skip;
   } catch (e) { resumen.focos = "ERROR: " + e.message; }
 
+  const correrOSM = new Date().getMinutes() < 15; // OSM ~1 vez/hora (datos casi estáticos; no abusar de Overpass)
   try {
+    if (!correrOSM) { resumen.osm = "omitido (1x/hora)"; throw { _skip: true }; }
     const osm = await traerOSM();
     const notasOsm = [];
     for (const [cat, items] of Object.entries(osm)) {
@@ -178,7 +263,7 @@ async function correr() {
       notasOsm.push(`${cat}:${items.length}`);
     }
     resumen.osm = notasOsm.join(" ");
-  } catch (e) { resumen.osm = "ERROR: " + e.message; }
+  } catch (e) { if (!(e && e._skip)) resumen.osm = "ERROR: " + e.message; }
 
   await db.collection("sistema").doc("vigia").set(resumen, { merge: true });
   console.log("Vigía CRECIDA:", JSON.stringify(resumen, null, 2));
