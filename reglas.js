@@ -34,5 +34,8 @@ window.CRECIDA_REGLAS = [
   { match: "Vipos",              rio: "Río Vipos",   departamentos: ["Trancas", "Tafí Viejo"],           tt_horas: null },
 
   // --- Oeste / valles (revisar con cuidado) ---
-  { match: "Del Campo",          rio: "Río Del Campo", departamentos: ["Tafí del Valle"],               tt_horas: null },
+  // "Del Campo - Cabo San Miguel" está en Catamarca (fuera de Tucumán): se quitó el 29/10.
+
+  // --- Este (Urueña) — estación en Burruyacú; aguas abajo: revisar ---
+  { match: "Urueña",             rio: "Río Urueña",  departamentos: ["Burruyacú"],                       tt_horas: null },
 ];

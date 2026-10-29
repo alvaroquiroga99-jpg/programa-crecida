@@ -27,6 +27,8 @@ const files = [
   "ayuda.js",
   "acceso.js",
   "usuarios-import.js",
+  "padron.js",
+  "prellenado.js",
   "confirmar.html",
 ];
 
@@ -42,7 +44,7 @@ const v = Date.now().toString(36);
 const idxPath = path.join(dist, "index.html");
 if (fs.existsSync(idxPath)) {
   let html = fs.readFileSync(idxPath, "utf8");
-  ["styles.css", "app.js", "map-data.js", "ina.js", "efectores.js", "mapa.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js", "tendencias.js", "envio.js", "cuota.js", "recepcion.js", "alertas.js", "pronostico.js", "rios.js", "viento.js", "precipitacion.js", "ayuda.js", "acceso.js", "usuarios-import.js"]
+  ["styles.css", "app.js", "map-data.js", "ina.js", "efectores.js", "mapa.js", "firebase-config.js", "capas.js", "reglas.js", "motor.js", "tendencias.js", "envio.js", "cuota.js", "recepcion.js", "alertas.js", "pronostico.js", "rios.js", "viento.js", "precipitacion.js", "ayuda.js", "acceso.js", "usuarios-import.js", "padron.js", "prellenado.js"]
     .forEach((f) => { html = html.split('"' + f + '"').join('"' + f + "?v=" + v + '"'); });
   fs.writeFileSync(idxPath, html);
 }

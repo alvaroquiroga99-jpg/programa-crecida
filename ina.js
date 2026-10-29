@@ -53,7 +53,42 @@
     return i > 0 ? "Río " + n.slice(0, i).trim() : "Río sin dato";
   }
 
+  // --- Solo estaciones DENTRO de Tucumán (29/10) ----------------------------------
+  // Antes se filtraba con un rectángulo y entraban estaciones de Catamarca y Santiago del
+  // Estero (p. ej. "Del Campo - Cabo San Miguel"). Ahora se usa el polígono de cada
+  // departamento y se agrega a cada estación el departamento donde está.
+  const DEPTOS_OFICIALES = ["Burruyacú", "Capital", "Chicligasta", "Cruz Alta", "Famaillá", "Graneros",
+    "Juan Bautista Alberdi", "La Cocha", "Leales", "Lules", "Monteros", "Río Chico", "Simoca",
+    "Tafí del Valle", "Tafí Viejo", "Trancas", "Yerba Buena"];
+  const nrm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  let poligonos = null;
+  async function cargarPoligonos() {
+    if (poligonos) return poligonos;
+    try {
+      const g = await (await fetch("data/departamentos.geojson")).json();
+      poligonos = (g.features || []).map((f) => ({
+        nombre: DEPTOS_OFICIALES.find((d) => nrm(d) === nrm(f.properties && f.properties.departamento)) || (f.properties && f.properties.departamento) || "",
+        anillos: f.geometry.type === "Polygon" ? [f.geometry.coordinates[0]] : f.geometry.coordinates.map((p) => p[0]),
+      }));
+    } catch (e) { poligonos = []; }
+    return poligonos;
+  }
+  function dentro(lon, lat, anillo) {
+    let ins = false;
+    for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+      const xi = anillo[i][0], yi = anillo[i][1], xj = anillo[j][0], yj = anillo[j][1];
+      if (((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi)) ins = !ins;
+    }
+    return ins;
+  }
+  function departamentoDe(lon, lat, polys) {
+    const p = polys.find((x) => x.anillos.some((a) => dentro(lon, lat, a)));
+    return p ? p.nombre : null;
+  }
+  window.CRECIDA_departamentoDe = async (lon, lat) => departamentoDe(lon, lat, await cargarPoligonos());
+
   window.CRECIDA_fetchINA = async function () {
+    const polys = await cargarPoligonos();
     const res = await fetch(construirUrl(), { cache: "no-store" });
     if (!res.ok) throw new Error("INA WFS HTTP " + res.status);
     const geo = await res.json();
@@ -93,7 +128,10 @@
           s.lat <= TUC.maxLat &&
           s.lon >= TUC.minLon &&
           s.lon <= TUC.maxLon,
-      );
+      )
+      .map((s) => Object.assign(s, { departamento: polys.length ? departamentoDe(s.lon, s.lat, polys) : null }))
+      // Con polígonos cargados, quedan solo las estaciones que están dentro de Tucumán.
+      .filter((s) => !polys.length || !!s.departamento);
   };
 
   window.CRECIDA_INA_URL = construirUrl();

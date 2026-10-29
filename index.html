@@ -295,6 +295,7 @@
               <span class="quiet-pill" id="recipientCount">0 responsables</span>
             </div>
           </div>
+          <div id="padronCalidad"></div>
           <form class="recipient-form" id="recipientForm">
             <div class="form-field">
               <label for="recipientName">Responsable</label>
@@ -433,6 +434,7 @@
           <button class="modal-close" id="closeAlertModal" type="button" aria-label="Cerrar">✕</button>
         </div>
         <div class="modal-body">
+          <div id="prellenadoFuentes"></div>
           <form class="alert-form" id="alertForm">
             <div class="form-field">
               <label for="manualAlertLevel">Nivel</label>
@@ -496,6 +498,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="acceso.js"></script>
     <script src="usuarios-import.js"></script>
+    <script src="padron.js"></script>
+    <script src="prellenado.js"></script>
     <script>
       (function () {
         const modal = document.getElementById("alertModal");

@@ -134,6 +134,8 @@ async function syncHidroData({ silent = false } = {}) {
         rio: item.rio || "Río sin dato",
         tramo: item.tramo || "",
         altura_m: Number(item.altura_m),
+        precedente: Number(item.valor_precedente),
+        departamento: item.departamento || "",
         caudal_m3s: Number(item.caudal_estimado_m3s ?? item.caudal_m3s),
         tendencia: item.tendencia || "permanece",
         nivel_alerta: item.nivel_alerta || "Normal",
@@ -784,7 +786,7 @@ function renderHydroContext() {
       <strong>${hidroStations.length}</strong>
     </div>
     <div>
-      <span>En crecida</span>
+      <span>Subiendo</span>
       <strong>${crecidas.length}</strong>
     </div>
     <div>
@@ -805,17 +807,33 @@ function renderHydroContext() {
       const br = b.tendencia === "crece" || b.nivel_alerta.toLowerCase().includes("alerta") ? 1 : 0;
       return br - ar || (b.altura_m || 0) - (a.altura_m || 0);
     })
-    .slice(0, 6)
+    .slice(0, 12)
     .forEach((station) => {
-      const isCrecida = station.tendencia === "crece" || station.nivel_alerta.toLowerCase().includes("alerta");
+      // Color = estado OFICIAL del INA (Normal / Alerta / Evacuación). Que un río suba no lo
+      // pone en rojo: la variación real se muestra al lado (↑ +2 cm / ↓ −16 cm).
+      const enAlerta = /alerta|evacua/i.test(station.nivel_alerta);
+      const delta = Number.isFinite(station.altura_m) && Number.isFinite(station.precedente)
+        ? Math.round((station.altura_m - station.precedente) * 100) : null;
+      let variacion = "";
+      if (station.tendencia === "crece" || station.tendencia === "baja") {
+        const sube = station.tendencia === "crece";
+        const txt = delta != null && delta !== 0 ? `${sube ? "↑ +" : "↓ −"}${Math.abs(delta)} cm` : (sube ? "↑ sube" : "↓ baja");
+        variacion = `<span title="Variación respecto de la medición anterior del INA" style="font-size:12px;font-weight:700;white-space:nowrap;color:${sube ? "#b45309" : "#0369a1"}">${txt}</span>`;
+      }
+      const medido = station.fecha ? new Date(station.fecha) : null;
+      const cuando = medido && !isNaN(medido)
+        ? ` · medido ${medido.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}` : "";
       const item = document.createElement("li");
       item.innerHTML = `
         <span class="list-main">
-          <strong>${station.nombre}</strong>
-          <span>${station.rio}${station.tramo ? ` / ${station.tramo}` : ""}</span>
+          <strong>${_esc(station.nombre)}</strong>
+          <span>${_esc(station.rio)}${station.departamento ? ` · ${_esc(station.departamento)}` : ""}${cuando}</span>
         </span>
-        <span class="status-token ${isCrecida ? "state-escalate" : "state-ok"}">
-          ${Number.isFinite(station.altura_m) ? station.altura_m.toFixed(2) : "--"} m
+        <span style="display:flex;align-items:center;gap:8px">
+          ${variacion}
+          <span class="status-token ${enAlerta ? "state-escalate" : "state-ok"}" title="Estado oficial INA: ${_esc(station.nivel_alerta)}">
+            ${Number.isFinite(station.altura_m) ? station.altura_m.toFixed(2) : "--"} m${enAlerta ? ` · ${_esc(station.nivel_alerta)}` : ""}
+          </span>
         </span>
       `;
       list.appendChild(item);
@@ -1101,13 +1119,14 @@ alertForm.addEventListener("submit", (event) => {
   alertData.title = title;
   alertData.directive = directive;
   alertData.zoneCompact = affected.join(" / ");
-  alertData.source = "Carga manual auditada";
+  const fuenteDatos = (alertForm.dataset.fuente || "").trim(); // la completa prellenado.js
+  alertData.source = fuenteDatos ? `Carga manual · ${fuenteDatos}` : "Carga manual auditada";
   alertData.sourceShort = "Manual";
   alertData.issuedAt = `${now} h`;
   alertData.validUntil = validUntil;
   alertData.lastSync = `${now} h`;
   alertData.affected = affected;
-  alertData.message = `${alertData.level.toUpperCase()} - ${title.toUpperCase()}\n\nFuente: carga manual auditada\nID: ${alertData.id}\n\nZona afectada: ${affected.join(" - ")}.\nVigencia: ${validUntil}.\n\nAcción: ${directive}\n\nPara confirmar la recepción, usá el enlace de este mensaje.`;
+  alertData.message = `${alertData.level.toUpperCase()} - ${title.toUpperCase()}\n\nFuente: ${fuenteDatos ? fuenteDatos + " (validado por la sala de situación)" : "carga manual auditada"}\nID: ${alertData.id}\n\nZona afectada: ${affected.join(" - ")}.\nVigencia: ${validUntil}.\n\nAcción: ${directive}\n\nPara confirmar la recepción, usá el enlace de este mensaje.`;
 
   resetJurisdictionRisks(affected, levelKey);
   selectedJurisdiction = getJurisdiction(affected[0] || selectedJurisdiction.name);

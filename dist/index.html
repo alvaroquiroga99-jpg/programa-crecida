@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css" />
-    <link rel="stylesheet" href="styles.css?v=mvtk2hy0" />
+    <link rel="stylesheet" href="styles.css?v=mvtlsx9u" />
   </head>
   <body>
     <div id="acceso" class="acceso" role="dialog" aria-label="Acceso al sistema">
@@ -295,6 +295,7 @@
               <span class="quiet-pill" id="recipientCount">0 responsables</span>
             </div>
           </div>
+          <div id="padronCalidad"></div>
           <form class="recipient-form" id="recipientForm">
             <div class="form-field">
               <label for="recipientName">Responsable</label>
@@ -433,6 +434,7 @@
           <button class="modal-close" id="closeAlertModal" type="button" aria-label="Cerrar">✕</button>
         </div>
         <div class="modal-body">
+          <div id="prellenadoFuentes"></div>
           <form class="alert-form" id="alertForm">
             <div class="form-field">
               <label for="manualAlertLevel">Nivel</label>
@@ -471,31 +473,33 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=mvtk2hy0"></script>
+    <script src="firebase-config.js?v=mvtlsx9u"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js"></script>
-    <script src="map-data.js?v=mvtk2hy0"></script>
-    <script src="ina.js?v=mvtk2hy0"></script>
-    <script src="app.js?v=mvtk2hy0"></script>
-    <script src="efectores.js?v=mvtk2hy0"></script>
-    <script src="mapa.js?v=mvtk2hy0"></script>
-    <script src="capas.js?v=mvtk2hy0"></script>
-    <script src="reglas.js?v=mvtk2hy0"></script>
-    <script src="motor.js?v=mvtk2hy0"></script>
-    <script src="tendencias.js?v=mvtk2hy0"></script>
-    <script src="envio.js?v=mvtk2hy0"></script>
-    <script src="cuota.js?v=mvtk2hy0"></script>
-    <script src="recepcion.js?v=mvtk2hy0"></script>
-    <script src="alertas.js?v=mvtk2hy0"></script>
-    <script src="pronostico.js?v=mvtk2hy0"></script>
-    <script src="rios.js?v=mvtk2hy0"></script>
-    <script src="viento.js?v=mvtk2hy0"></script>
-    <script src="precipitacion.js?v=mvtk2hy0"></script>
-    <script src="ayuda.js?v=mvtk2hy0"></script>
+    <script src="map-data.js?v=mvtlsx9u"></script>
+    <script src="ina.js?v=mvtlsx9u"></script>
+    <script src="app.js?v=mvtlsx9u"></script>
+    <script src="efectores.js?v=mvtlsx9u"></script>
+    <script src="mapa.js?v=mvtlsx9u"></script>
+    <script src="capas.js?v=mvtlsx9u"></script>
+    <script src="reglas.js?v=mvtlsx9u"></script>
+    <script src="motor.js?v=mvtlsx9u"></script>
+    <script src="tendencias.js?v=mvtlsx9u"></script>
+    <script src="envio.js?v=mvtlsx9u"></script>
+    <script src="cuota.js?v=mvtlsx9u"></script>
+    <script src="recepcion.js?v=mvtlsx9u"></script>
+    <script src="alertas.js?v=mvtlsx9u"></script>
+    <script src="pronostico.js?v=mvtlsx9u"></script>
+    <script src="rios.js?v=mvtlsx9u"></script>
+    <script src="viento.js?v=mvtlsx9u"></script>
+    <script src="precipitacion.js?v=mvtlsx9u"></script>
+    <script src="ayuda.js?v=mvtlsx9u"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-    <script src="acceso.js?v=mvtk2hy0"></script>
-    <script src="usuarios-import.js?v=mvtk2hy0"></script>
+    <script src="acceso.js?v=mvtlsx9u"></script>
+    <script src="usuarios-import.js?v=mvtlsx9u"></script>
+    <script src="padron.js?v=mvtlsx9u"></script>
+    <script src="prellenado.js?v=mvtlsx9u"></script>
     <script>
       (function () {
         const modal = document.getElementById("alertModal");

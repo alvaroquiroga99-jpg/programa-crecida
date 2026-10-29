@@ -26,16 +26,15 @@
     );
   }
 
-  // Nivel sugerido a partir de campos REALES del INA (nivel_alerta + tendencia).
-  // No usamos cotas absolutas inventadas: nos apoyamos en lo que informa la fuente.
+  // Nivel sugerido SOLO con los umbrales oficiales del INA (alerta / evacuación).
+  // 29/10: antes un río en estado "Normal" que subía un par de centímetros se marcaba
+  // NARANJA; eso no es una alerta oficial y daba falsas alarmas. Ahora, sin umbral superado,
+  // no hay sugerencia (la subida se sigue viendo en el mapa y en "Contexto hídrico").
   function nivelSugerido(nivel, tend) {
     const n = (nivel || "").toLowerCase();
     const t = (tend || "").toLowerCase();
-    const esCrecida = n.includes("alerta crecida") || n.includes("evacua");
-    const enAlza = n.includes("alza") || t === "crece";
-    if (esCrecida && t === "crece") return "red";
-    if (esCrecida) return "orange";
-    if (enAlza) return "orange";
+    if (n.includes("evacua")) return "red";
+    if (n.includes("alerta crecida")) return t === "crece" ? "red" : "orange";
     return null;
   }
 
@@ -125,7 +124,10 @@
     sugerencias = (Array.isArray(data) ? data : [])
       .filter((a) => dentroDeTucuman(Number(a.lat), Number(a.lon)))
       .map((a) => {
-        const regla = buscarRegla(a.nombre);
+        // Toda estación de Tucumán queda mapeada: con su regla de cuenca, o como mínimo
+        // con el departamento donde está ubicada (dato geográfico, no estimado).
+        const regla = buscarRegla(a.nombre) ||
+          (a.departamento ? { rio: a.rio, departamentos: [a.departamento], tt_horas: null, sinRegla: true } : null);
         if (!regla) return null;
         const levelKey = nivelSugerido(a.nivel_alerta, a.tendencia);
         if (!levelKey) return null;
@@ -229,6 +231,13 @@
       : "";
     const smnAl = (smnAlertas && Array.isArray(smnAlertas.tucuman)) ? smnAlertas.tucuman : [];
     try { window.CRECIDA_MONITOREO = construirMonitoreo(smnAl, sugerencias); } catch (e) {}
+    // Alertas vigentes para precargar "Nueva alerta manual" (prellenado.js).
+    try {
+      window.CRECIDA_VIGENTES = {
+        sugerencias: sugerencias.slice(),
+        smn: smnAl.map((a) => Object.assign({}, a, { departamentos: AREA_DEPS[a.area_id] || [], tipo: tipoMeteo(a) })),
+      };
+    } catch (e) {}
     const COLOR_NIVEL = { amarillo: "#eab308", naranja: "#f59e0b", rojo: "#dc2626" };
     const alertasBlock = smnAl.length
       ? `<div class="sp-smn sp-smn-color"><strong>🛑 Alertas SMN por color (${smnAl.length})</strong>` +
