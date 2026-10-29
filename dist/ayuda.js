@@ -8,7 +8,7 @@
     "Caudal de ríos · pronóstico": "Caudal previsto de los ríos (GloFAS, modelado). El número es el caudal de hoy en m³/s y la flecha la tendencia a 7 días (↑ crece, → estable, ↓ baja). Sirve para anticipar crecidas antes de que lo marque el aforo del INA.",
     "Contexto hídrico": "Aforos observados del INA en vivo: altura del río en metros. 'En crecida' cuenta las estaciones que están subiendo y 'Mayor altura' es el pico actual. Es el dato medido (complementa el pronóstico de ríos).",
     "Sugerencias de alerta": "Propuestas automáticas según los datos en vivo (INA/SMN). El color indica severidad (roja/naranja). 'Cargar en alerta' la pasa a una alerta manual para revisar y distribuir. Son sugerencias: siempre las valida una persona.",
-    "Capas del mapa": "Activá o desactivá puntos de referencia en el mapa: 🚒 bomberos, 🚓 policía, 🔥 focos de calor (NASA), 🏥 efectores de salud y 🌧️ radar de lluvia. Tocá un punto para ver su información."
+    "Capas del mapa": "Activá o desactivá puntos de referencia en el mapa: 🚒 bomberos, 🚓 policía, 🔥 focos de calor (NASA) y 🌧️ radar de lluvia. Los 🏥 efectores de salud se ven al activar 🗂️ Áreas programáticas. Tocá un punto para ver su información."
   };
   var tip = null;
   function norm(s) { return (s || "").replace(/\s+/g, " ").trim(); }

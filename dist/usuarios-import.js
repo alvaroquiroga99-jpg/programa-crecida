@@ -42,7 +42,7 @@
     ref.getColumn(2).width = 30;
 
     // --- Hoja principal ---
-    var ws = wb.addWorksheet("Usuarios");
+    var ws = wb.addWorksheet("Miembros");
     CAMPOS.forEach(function (c, i) {
       var cell = ws.getCell(1, i + 1);
       cell.value = c.h + (c.req ? " *" : "");
@@ -81,7 +81,7 @@
     var blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
-    a.href = url; a.download = "plantilla-usuarios-CRECIDA.xlsx";
+    a.href = url; a.download = "plantilla-miembros-CRECIDA.xlsx";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
   }
@@ -126,7 +126,7 @@
       });
       var res = { ok: 0, dup: 0 };
       if (validos.length) { res = (await window.CRECIDA_importarUsuarios(validos)) || res; }
-      var html = "<strong>" + res.ok + "</strong> usuario(s) importado(s) como <em>Pendientes</em>.";
+      var html = "<strong>" + res.ok + "</strong> miembro(s) importado(s) como <em>Pendientes</em>.";
       if (res.dup) { html += " <span class='bulk-err-title'>" + res.dup + " ya existían (omitidos).</span>"; }
       if (errores.length) {
         html += "<br><span class='bulk-err-title'>" + errores.length + " con error (no cargadas):</span><ul>" +

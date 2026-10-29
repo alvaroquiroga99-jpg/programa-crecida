@@ -76,7 +76,7 @@
         </div>
         <div class="al-col">
           <h4>🧪 Prueba de funcionamiento</h4>
-          <ul><li class="vacio">Enviada solo a la casilla del operador. Ningún usuario del padrón la recibió.</li></ul>
+          <ul><li class="vacio">Enviada solo a la casilla del operador. Ningún miembro del padrón la recibió.</li></ul>
         </div>
       </div>`;
     }

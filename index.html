@@ -165,7 +165,7 @@
       <section class="workspace" aria-label="Superficie de coordinación">
         <nav class="tabs" aria-label="Vistas principales">
           <button class="tab active" data-view="operation" type="button">Operación</button>
-          <button class="tab" data-view="contacts" type="button">Usuarios</button>
+          <button class="tab" data-view="contacts" type="button">Miembros</button>
           <button class="tab" data-view="messages" type="button">Mensaje</button>
           <button class="tab" data-view="alertas" type="button">Confirmaciones</button>
           <button class="tab" data-view="audit" type="button">Trazabilidad</button>
@@ -287,10 +287,11 @@
         <section class="view" id="contactsView">
           <div class="view-header">
             <div>
-              <p class="eyebrow">Distribución inteligente</p>
-              <h2>Usuarios registrados</h2>
+              <p class="eyebrow">Equipo que recibe las alertas</p>
+              <h2>Miembros</h2>
             </div>
             <div class="view-header-actions">
+              <button class="table-action danger-text-button" id="deleteSelectedButton" type="button" hidden>Eliminar seleccionados</button>
               <button class="table-action approve-text-button" id="approveAllButton" type="button" hidden>✓ Aprobar todos</button>
               <span class="quiet-pill" id="recipientCount">0 responsables</span>
             </div>
@@ -337,7 +338,7 @@
             <div class="bulk-head">
               <div>
                 <p class="eyebrow">Carga masiva</p>
-                <h3>Importar usuarios desde Excel</h3>
+                <h3>Importar miembros desde Excel</h3>
               </div>
             </div>
             <div class="bulk-actions">
@@ -345,14 +346,19 @@
               <label class="primary-button bulk-file-label" for="bulkFile">⬆ Importar Excel</label>
               <input type="file" id="bulkFile" accept=".xlsx,.xls,.csv" hidden />
             </div>
-            <p class="bulk-hint">Columnas: <strong>Responsable, Email, WhatsApp, Función, Jurisdicción, Organismo</strong>. <strong>WhatsApp</strong> es obligatorio (el email es opcional pero recomendado). Descargá la plantilla para ver los valores válidos. No se cargan duplicados (mismo WhatsApp o email). <strong>Jurisdicción y Organismo</strong> se eligen de una lista en la plantilla. Los usuarios quedan <strong>Pendientes</strong> para aprobar.</p>
+            <p class="bulk-hint">Columnas: <strong>Responsable, Email, WhatsApp, Función, Jurisdicción, Organismo</strong>. <strong>WhatsApp</strong> es obligatorio (el email es opcional pero recomendado). Descargá la plantilla para ver los valores válidos. No se cargan duplicados (mismo WhatsApp o email). <strong>Jurisdicción y Organismo</strong> se eligen de una lista en la plantilla. Los miembros quedan <strong>Pendientes</strong> para aprobar.</p>
             <div class="bulk-result" id="bulkResult" hidden></div>
           </div>
 
+          <div class="member-search" style="display:flex;gap:8px;align-items:center;margin:0 0 10px">
+            <input type="search" id="memberSearch" placeholder="🔍 Buscar por nombre, email, WhatsApp, jurisdicción, organismo o función" aria-label="Buscar miembros" autocomplete="off"
+              style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line, #cbd5e1);border-radius:10px;font:inherit;font-size:14px" />
+          </div>
           <div class="recipient-table-wrap">
             <table class="recipient-table">
               <thead>
                 <tr>
+                  <th style="width:34px"><input type="checkbox" id="selectAllMembers" aria-label="Seleccionar todos los miembros" title="Seleccionar todos" /></th>
                   <th>Responsable</th>
                   <th>Jurisdicción</th>
                   <th>Organismo</th>
@@ -391,7 +397,7 @@
                 </div>
               </div>
               <ul class="channel-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px;line-height:1.45">
-                <li><strong>📧 Correo — automático.</strong> Botón “Enviar alerta por correo”: llega a los usuarios activos de los departamentos de la alerta, con un botón para confirmar recepción. Tope: 100 correos por día (Gmail).</li>
+                <li><strong>📧 Correo — automático.</strong> Botón “Enviar alerta por correo”: llega a los miembros activos de los departamentos de la alerta, con un botón para confirmar recepción. Tope: 100 correos por día (Gmail).</li>
                 <li><strong>💬 WhatsApp — manual.</strong> En “Ver quién no confirmó”, cada persona que falta tiene su botón de WhatsApp con el mensaje y el enlace de confirmación ya armados.</li>
                 <li><strong>🧪 Simulacro.</strong> Envía solo a tu casilla, marcado como PRUEBA DE FUNCIONAMIENTO.</li>
               </ul>

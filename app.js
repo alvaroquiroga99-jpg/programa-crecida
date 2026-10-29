@@ -423,6 +423,9 @@ function createAlertAreaPath(affected) {
 function deleteRecipient(index) {
   const recipient = extraRecipients[index];
   if (!recipient) return;
+  if (typeof window.confirm === "function" &&
+      !window.confirm(`¿Eliminar a ${recipient.name} (${recipient.jurisdiction}) de los miembros?\n\nDeja de recibir alertas. No se puede deshacer.`)) return;
+  if (recipient.firebaseId) _seleccionMiembros.delete(recipient.firebaseId);
 
   if (recipient.firebaseId && firebaseEnabled && firestoreDb) {
     firestoreDb.collection("destinatarios").doc(recipient.firebaseId).delete().catch(() => {});
@@ -448,7 +451,7 @@ function approveRecipient(index) {
   recipient.estadoAlta = "Activo";
   recipient.last = `${currentTime()} h`;
   saveExtraRecipients();
-  addAudit("Usuario aprobado", `${recipient.name} (${recipient.jurisdiction}) quedó ACTIVO para recibir alertas.`, "Alta de usuarios");
+  addAudit("Miembro aprobado", `${recipient.name} (${recipient.jurisdiction}) quedó ACTIVO para recibir alertas.`, "Alta de miembros");
   render();
 }
 
@@ -456,14 +459,14 @@ function approveAllRecipients() {
   const pendientes = extraRecipients.filter((r) => (r.estadoAlta || "Activo") !== "Activo");
   if (!pendientes.length) return;
   if (typeof window.confirm === "function" &&
-      !window.confirm(`¿Aprobar ${pendientes.length} usuario(s) pendiente(s)? Van a quedar ACTIVOS para recibir alertas.`)) {
+      !window.confirm(`¿Aprobar ${pendientes.length} miembro(s) pendiente(s)? Van a quedar ACTIVOS para recibir alertas.`)) {
     return;
   }
   const hora = `${currentTime()} h`;
   pendientes.forEach((r) => { r.estadoAlta = "Activo"; r.last = hora; });
   saveExtraRecipients();
-  addAudit("Usuarios aprobados", `Se aprobaron ${pendientes.length} usuario(s) de una vez; quedaron ACTIVOS para recibir alertas.`, "Alta de usuarios");
-  if (window.showToast) window.showToast(`✓ ${pendientes.length} usuario(s) aprobado(s).`);
+  addAudit("Miembros aprobados", `Se aprobaron ${pendientes.length} miembro(s) de una vez; quedaron ACTIVOS para recibir alertas.`, "Alta de miembros");
+  if (window.showToast) window.showToast(`✓ ${pendientes.length} miembro(s) aprobado(s).`);
   render();
 }
 
@@ -726,10 +729,23 @@ function renderConfirmations() {
     });
 }
 
-function renderRecipients() {
-  const rows = allRecipients();
+// --- Buscador de miembros (29/10) ---
+let _filtroMiembros = "";
+function _nzBusqueda(s) { return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+function _coincideBusqueda(row) {
+  if (!_filtroMiembros) return true;
+  const texto = _nzBusqueda([row.name, row.email, row.phone, row.jurisdiction, row.organization, row.role].join(" "));
+  const digitos = String(row.phone || "").replace(/\D/g, "");
+  return _filtroMiembros.split(/\s+/).filter(Boolean).every((t) => texto.includes(t) || (/^\d+$/.test(t) && digitos.includes(t)));
+}
 
-  document.getElementById("recipientCount").textContent = `${rows.length} usuarios`;
+function renderRecipients() {
+  const todas = allRecipients();
+  const rows = todas.filter(_coincideBusqueda);
+
+  document.getElementById("recipientCount").textContent = _filtroMiembros
+    ? `${rows.length} de ${todas.length} miembros`
+    : `${todas.length} miembros`;
   const _pend = extraRecipients.filter((r) => (r.estadoAlta || "Activo") !== "Activo").length;
   const _approveAll = document.getElementById("approveAllButton");
   if (_approveAll) {
@@ -739,9 +755,11 @@ function renderRecipients() {
   recipientRows.innerHTML = "";
   rows.forEach((row) => {
     const tr = document.createElement("tr");
+    const _sid = row.editable && row.firebaseId ? row.firebaseId : "";
     tr.innerHTML = `
+      <td>${_sid ? `<input type="checkbox" data-select-member="${_esc(_sid)}" ${_seleccionMiembros.has(_sid) ? "checked" : ""} aria-label="Seleccionar ${_esc(row.name)}" />` : ""}</td>
       <td>
-        <strong>${row.name}</strong>
+        <strong>${_esc(row.name)}</strong>
         <span class="table-subtext">${row.email || row.phone || "Sin datos cargados"}</span>
       </td>
       <td>${row.jurisdiction}</td>
@@ -765,6 +783,7 @@ function renderRecipients() {
     `;
     recipientRows.appendChild(tr);
   });
+  _actualizarBotonEliminar();
 }
 
 function renderHydroContext() {
@@ -932,18 +951,18 @@ function renderActionState() {
   } else if (distributed) {
     actionNote.textContent = "Enviada. Las confirmaciones llegan en vivo. A quien no confirme, escribile por WhatsApp desde “Ver quién no confirmó”.";
   } else if (destinos === 0) {
-    actionNote.textContent = `No hay usuarios activos con email en ${alertData.affected.join(", ")}. Cargalos en “Usuarios” antes de enviar.`;
+    actionNote.textContent = `No hay miembros activos con email en ${alertData.affected.join(", ")}. Cargalos en “Miembros” antes de enviar.`;
   } else if (prueba) {
     actionNote.textContent = "MODO PRUEBA: el correo va solo a tu casilla, marcado como prueba de funcionamiento. Nadie del padrón lo recibe.";
   } else {
-    actionNote.textContent = `Va por correo a los usuarios activos de ${alertData.affected.join(", ")}, con botón para confirmar recepción. Antes de enviar vas a ver el resumen.`;
+    actionNote.textContent = `Va por correo a los miembros activos de ${alertData.affected.join(", ")}, con botón para confirmar recepción. Antes de enviar vas a ver el resumen.`;
   }
 
   const nt = document.getElementById("nextActionTitle");
   const nm = document.getElementById("nextActionMeta");
   if (nt && nm) {
     if (!activa) { nt.textContent = "1 · Cargar una alerta"; nm.textContent = "Desde una sugerencia o “＋ Nueva alerta manual”"; }
-    else if (!distributed) { nt.textContent = prueba ? "2 · Enviar la prueba" : "2 · Enviar la alerta"; nm.textContent = prueba ? "Solo a tu casilla" : `${destinos || 0} usuario(s) con email en la zona`; }
+    else if (!distributed) { nt.textContent = prueba ? "2 · Enviar la prueba" : "2 · Enviar la alerta"; nm.textContent = prueba ? "Solo a tu casilla" : `${destinos || 0} miembro(s) con email en la zona`; }
     else { nt.textContent = "3 · Seguir confirmaciones"; nm.textContent = "“Ver quién no confirmó” → WhatsApp a los que faltan"; }
   }
   const pc = document.getElementById("pendingCount");
@@ -1026,7 +1045,7 @@ recipientForm.addEventListener("submit", (event) => {
 
   const _dup = buscarDuplicado(recipient.email, recipient.phone, editingRecipientIndex);
   if (_dup) {
-    window.alert(`Ya existe un usuario con ese WhatsApp o email: ${_dup.name} (${_dup.jurisdiction}). No se agregó de nuevo.`);
+    window.alert(`Ya existe un miembro con ese WhatsApp o email: ${_dup.name} (${_dup.jurisdiction}). No se agregó de nuevo.`);
     return;
   }
 
@@ -1077,7 +1096,70 @@ recipientRows.addEventListener("click", (event) => {
 const approveAllButton = document.getElementById("approveAllButton");
 if (approveAllButton) approveAllButton.addEventListener("click", approveAllRecipients);
 
+// --- Selección y eliminación de varios miembros (29/10) ---------------------------------
+const _seleccionMiembros = new Set();
+function _actualizarBotonEliminar() {
+  const b = document.getElementById("deleteSelectedButton");
+  const vigentes = new Set(extraRecipients.map((r) => r.firebaseId).filter(Boolean));
+  [..._seleccionMiembros].forEach((id) => { if (!vigentes.has(id)) _seleccionMiembros.delete(id); });
+  if (b) { b.hidden = _seleccionMiembros.size === 0; b.textContent = `Eliminar seleccionados (${_seleccionMiembros.size})`; }
+  const all = document.getElementById("selectAllMembers");
+  if (all) {
+    all.checked = vigentes.size > 0 && _seleccionMiembros.size === vigentes.size;
+    all.indeterminate = _seleccionMiembros.size > 0 && _seleccionMiembros.size < vigentes.size;
+  }
+}
+async function eliminarSeleccionados() {
+  const elegidos = extraRecipients.filter((r) => r.firebaseId && _seleccionMiembros.has(r.firebaseId));
+  if (!elegidos.length) return;
+  const muestra = elegidos.slice(0, 10).map((r) => `• ${r.name} (${r.jurisdiction})`).join("\n") +
+    (elegidos.length > 10 ? `\n… y ${elegidos.length - 10} más` : "");
+  if (typeof window.confirm === "function" &&
+      !window.confirm(`¿Eliminar ${elegidos.length} miembro(s)?\n\n${muestra}\n\nDejan de recibir alertas. No se puede deshacer.`)) return;
+  let ok = 0, fallas = 0;
+  if (firebaseEnabled && firestoreDb) {
+    for (let i = 0; i < elegidos.length; i += 400) {
+      const lote = firestoreDb.batch();
+      const parte = elegidos.slice(i, i + 400);
+      parte.forEach((r) => lote.delete(firestoreDb.collection("destinatarios").doc(r.firebaseId)));
+      try { await lote.commit(); ok += parte.length; } catch (e) { fallas += parte.length; }
+    }
+  }
+  if (fallas) {
+    addAudit("Eliminación incompleta", `Se eliminaron ${ok} miembro(s); ${fallas} no se pudieron eliminar (revisá la sesión o la conexión).`, "Carga operativa");
+    if (window.showToast) window.showToast(`No se pudieron eliminar ${fallas} miembro(s). Revisá la conexión y reintentá.`);
+  } else {
+    addAudit("Miembros eliminados", `Se eliminaron ${ok} miembro(s): ${elegidos.slice(0, 20).map((r) => r.name).join(", ")}${elegidos.length > 20 ? "…" : ""}.`, "Carga operativa");
+    if (window.showToast) window.showToast(`✓ ${ok} miembro(s) eliminado(s).`);
+  }
+  const borrados = new Set(elegidos.slice(0, ok).map((r) => r.firebaseId));
+  extraRecipients = extraRecipients.filter((r) => !borrados.has(r.firebaseId));
+  try { localStorage.setItem(storageKey, JSON.stringify(extraRecipients)); } catch (e) {}
+  _seleccionMiembros.clear();
+  render();
+}
+const _buscador = document.getElementById("memberSearch");
+if (_buscador) _buscador.addEventListener("input", () => {
+  _filtroMiembros = _nzBusqueda(_buscador.value).trim();
+  renderRecipients();
+});
+
+const _btnEliminarSel = document.getElementById("deleteSelectedButton");
+if (_btnEliminarSel) _btnEliminarSel.addEventListener("click", eliminarSeleccionados);
+const _selTodos = document.getElementById("selectAllMembers");
+if (_selTodos) _selTodos.addEventListener("change", () => {
+  _seleccionMiembros.clear();
+  if (_selTodos.checked) extraRecipients.forEach((r) => { if (r.firebaseId && _coincideBusqueda(r)) _seleccionMiembros.add(r.firebaseId); });
+  renderRecipients();
+});
+
 recipientRows.addEventListener("change", (event) => {
+  const casilla = event.target.closest("[data-select-member]");
+  if (casilla) {
+    if (casilla.checked) _seleccionMiembros.add(casilla.dataset.selectMember); else _seleccionMiembros.delete(casilla.dataset.selectMember);
+    _actualizarBotonEliminar();
+    return;
+  }
   const statusSelect = event.target.closest("[data-status-recipient]");
   if (!statusSelect) return;
   updateRecipientStatus(Number(statusSelect.dataset.statusRecipient), statusSelect.value);
@@ -1287,7 +1369,7 @@ window.CRECIDA_importarUsuarios = async (lista) => {
     });
     added++;
   });
-  try { addAudit("Carga masiva de usuarios", `Importados ${added} usuario(s) desde Excel; ${dup} ya existían (omitidos).`, "Carga operativa"); } catch (e) {}
+  try { addAudit("Carga masiva de miembros", `Importados ${added} miembro(s) desde Excel; ${dup} ya existían (omitidos).`, "Carga operativa"); } catch (e) {}
   render();
   try { await saveRecipientsToFirestore(); } catch (e) {}
   return { ok: added, dup: dup };

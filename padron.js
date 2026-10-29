@@ -76,12 +76,12 @@
               <button type="button" class="primary-button compact-button" id="padronCorregir" ${corrigiendo ? "disabled" : ""}>
                 ${corrigiendo ? "Corrigiendo…" : `Corregir ${a.aCorregir.length} jurisdicciones`}</button>
             </div>` : `<div style="color:#166534;margin-bottom:6px">✓ Todas las jurisdicciones están bien escritas.</div>`}
-          ${a.sinJurisdiccion.length ? `<div style="color:#b91c1c;margin-bottom:6px">⚠️ ${a.sinJurisdiccion.length} usuario(s) con jurisdicción que no existe en la lista: ${a.sinJurisdiccion.slice(0, 8).map((r) => `${esc(r.name)} (“${esc(r.jurisdiction)}”)`).join(", ")}. Corregilos con “Editar”.</div>` : ""}
-          ${grupo("📧 Emails cargados en más de un usuario — a estas personas les llega un solo correo", a.emailsRep,
-              ([email, rs]) => `<li><strong>${esc(email)}</strong> — ${rs.length} usuarios: ${rs.map((r) => `${esc(r.name)} (${esc(r.jurisdiction)})`).join(", ")}</li>`)}
+          ${a.sinJurisdiccion.length ? `<div style="color:#b91c1c;margin-bottom:6px">⚠️ ${a.sinJurisdiccion.length} miembro(s) con jurisdicción que no existe en la lista: ${a.sinJurisdiccion.slice(0, 8).map((r) => `${esc(r.name)} (“${esc(r.jurisdiction)}”)`).join(", ")}. Corregilos con “Editar”.</div>` : ""}
+          ${grupo("📧 Emails cargados en más de un miembro — a estas personas les llega un solo correo", a.emailsRep,
+              ([email, rs]) => `<li><strong>${esc(email)}</strong> — ${rs.length} miembros: ${rs.map((r) => `${esc(r.name)} (${esc(r.jurisdiction)})`).join(", ")}</li>`)}
           ${grupo("👥 Nombres repetidos — puede ser la misma persona cargada dos veces", a.nombresRep,
               ([, rs]) => `<li>${rs.map((r) => `${esc(r.name)} · ${esc(r.jurisdiction)} · ${esc(r.email || r.phone || "")}`).join("  |  ")}</li>`)}
-          ${a.sinEmail.length ? grupo("✉️ Usuarios sin email — solo se los puede avisar por WhatsApp", [["", a.sinEmail]],
+          ${a.sinEmail.length ? grupo("✉️ Miembros sin email — solo se los puede avisar por WhatsApp", [["", a.sinEmail]],
               ([, rs]) => `<li>${rs.map((r) => `${esc(r.name)} (${esc(r.jurisdiction)})`).join(", ")}</li>`) : ""}
         </div>` : ""}
       </div>`;

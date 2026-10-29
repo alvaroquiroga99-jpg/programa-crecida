@@ -203,7 +203,7 @@
       const zonas = (alert.affected || []).join(", ");
 
       if (!conEmail.length) {
-        const m = `No hay usuarios activos con email en ${zonas || "los departamentos elegidos"}. No se envió nada.`;
+        const m = `No hay miembros activos con email en ${zonas || "los departamentos elegidos"}. No se envió nada.`;
         audit("Envío no realizado", m);
         toast(m, "warn");
         return;
@@ -212,7 +212,7 @@
       const q = window.CRECIDA_cuota ? window.CRECIDA_cuota.estado() : null;
       if (q && conEmail.length > q.restantes) {
         const m = `Este envío son ${conEmail.length} correos y hoy quedan ${q.restantes} de ${q.limite} (tope diario de Gmail). ` +
-          `No se envió nada para evitar un envío a medias. Achicá la zona o avisá por WhatsApp desde “Usuarios”.`;
+          `No se envió nada para evitar un envío a medias. Achicá la zona o avisá por WhatsApp desde “Miembros”.`;
         audit("Envío bloqueado por cupo", m);
         toast(m, "warn");
         return;
@@ -221,11 +221,11 @@
       const sinMail = prueba ? 0 : lista.filter((r) => !esEmail(r.email)).length;
       const resumen = prueba
         ? `🧪 PRUEBA DE FUNCIONAMIENTO\n\nSe enviará SOLO a: ${conEmail.map((r) => r.email).join(", ")}\n` +
-          `Ningún usuario del padrón recibe este correo.\n\n¿Enviar la prueba?`
+          `Ningún miembro del padrón recibe este correo.\n\n¿Enviar la prueba?`
         : `Vas a enviar una ALERTA REAL por correo.\n\n` +
           `Nivel: ${alert.level} — ${alert.title}\nDepartamentos: ${zonas}\n` +
-          `Destinatarios: ${conEmail.length} usuario(s) activos con email` +
-          (sinMail ? `\n(${sinMail} sin email: avisales por WhatsApp desde “Usuarios”)` : "") +
+          `Destinatarios: ${conEmail.length} miembro(s) activos con email` +
+          (sinMail ? `\n(${sinMail} sin email: avisales por WhatsApp desde “Miembros”)` : "") +
           (q ? `\nCupo de hoy luego del envío: ${q.restantes - conEmail.length} de ${q.limite}` : "") +
           `\n\n¿Confirmás el envío?`;
       if (typeof window.confirm === "function" && !window.confirm(resumen)) {

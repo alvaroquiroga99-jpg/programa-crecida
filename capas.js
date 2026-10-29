@@ -86,6 +86,7 @@
     efectores: {
       titulo: "Efectores de salud (SIPROSA)",
       chip: "🏥 Efectores",
+      sinChip: true, // 29/10: sin botón propio; los efectores se ven desde "Áreas programáticas"
       color: "#16a34a",
       colorItem: (d) => COLORES_EFECTOR[d.tipo] || COLORES_EFECTOR["Efector"],
       action: "",
@@ -332,6 +333,7 @@
     barra.id = "capasBar";
     barra.setAttribute("aria-label", "Capas de monitoreo");
     Object.keys(CAPAS).forEach((id) => {
+      if (CAPAS[id].sinChip) return;
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "capa-chip";
