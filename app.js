@@ -15,6 +15,9 @@ const alertData = {
     "SIN ALERTA ACTIVA\n\nEl sistema está en monitoreo normal.\nCuando se cargue o confirme una alerta, el mensaje operativo aparecerá aquí, listo para distribuir a los responsables.",
 };
 
+// Copia del estado "sin alerta" para poder volver a reposo al cerrar una alerta.
+const ALERTA_REPOSO = JSON.parse(JSON.stringify(alertData));
+
 const jurisdictions = [];
 
 const defaultState = {
@@ -447,6 +450,21 @@ function approveRecipient(index) {
   render();
 }
 
+function approveAllRecipients() {
+  const pendientes = extraRecipients.filter((r) => (r.estadoAlta || "Activo") !== "Activo");
+  if (!pendientes.length) return;
+  if (typeof window.confirm === "function" &&
+      !window.confirm(`¿Aprobar ${pendientes.length} usuario(s) pendiente(s)? Van a quedar ACTIVOS para recibir alertas.`)) {
+    return;
+  }
+  const hora = `${currentTime()} h`;
+  pendientes.forEach((r) => { r.estadoAlta = "Activo"; r.last = hora; });
+  saveExtraRecipients();
+  addAudit("Usuarios aprobados", `Se aprobaron ${pendientes.length} usuario(s) de una vez; quedaron ACTIVOS para recibir alertas.`, "Alta de usuarios");
+  if (window.showToast) window.showToast(`✓ ${pendientes.length} usuario(s) aprobado(s).`);
+  render();
+}
+
 function updateRecipientStatus(index, status) {
   const recipient = extraRecipients[index];
   if (!recipient) return;
@@ -492,26 +510,81 @@ function makeSvgElement(tag, attrs = {}) {
   return element;
 }
 
+function _esc(t) {
+  return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function renderAlert() {
-  document.getElementById("alertId").textContent = alertData.id;
-  document.getElementById("alertLevel").textContent = alertData.level;
-  document.getElementById("alertTitle").textContent = alertData.title;
-  document.getElementById("alertDirective").textContent = alertData.directive;
-  document.getElementById("alertZoneCompact").textContent = alertData.zoneCompact;
+  const mon = window.CRECIDA_MONITOREO || { hayAlgo: false, jurisdicciones: [], cantidad: 0 };
+  const operativa = alertData.level && alertData.level !== "Sin alerta";
+
+  let v;
+  if (operativa) {
+    v = { id: alertData.id, levelText: alertData.level, levelKey: alertData.levelKey, title: alertData.title, directive: alertData.directive, zoneCompact: alertData.zoneCompact };
+  } else if (mon.hayAlgo) {
+    v = {
+      id: "—", levelText: "Vigilancia", levelKey: mon.nivelKey,
+      title: mon.titulo || "Vigilancia",
+      directive: "Avisos meteorológicos/hidrológicos vigentes. No hay alerta operativa cargada: revisá las jurisdicciones involucradas y, si corresponde, cargá y distribuí una alerta.",
+      zoneCompact: "—",
+    };
+  } else {
+    v = { id: alertData.id, levelText: alertData.level, levelKey: alertData.levelKey, title: alertData.title, directive: alertData.directive, zoneCompact: alertData.zoneCompact };
+  }
+
+  document.getElementById("alertId").textContent = v.id;
+  document.getElementById("alertLevel").textContent = v.levelText;
+  document.getElementById("alertTitle").textContent = v.title;
+  document.getElementById("alertDirective").textContent = v.directive;
+  document.getElementById("alertZoneCompact").textContent = v.zoneCompact;
   document.getElementById("issuedAt").textContent = alertData.issuedAt;
   document.getElementById("validUntil").textContent = alertData.validUntil;
   document.getElementById("lastSync").textContent = window.CRECIDA_LASTSYNC || alertData.lastSync;
-  document.getElementById("sourceShort").textContent = alertData.sourceShort;
-  document.getElementById("affectedCount").textContent = `${alertData.affected.length} afectadas`;
+  const _src = document.getElementById("sourceShort");
+  if (_src) _src.textContent = alertData.sourceShort;
+  document.getElementById("affectedCount").textContent = operativa
+    ? `${alertData.affected.length} afectadas`
+    : (mon.hayAlgo ? `${mon.cantidad} involucradas` : "0 afectadas");
   document.getElementById("messageText").textContent = alertData.message;
 
-  const pending = jurisdictions.reduce((sum, item) => sum + (item.contacts - item.confirmed), 0);
-  document.getElementById("pendingCount").textContent = `${pending} responsables`;
 
   const badge = document.getElementById("alertLevel");
-  badge.classList.toggle("severity-red", alertData.levelKey === "red");
-  badge.classList.toggle("severity-orange", alertData.levelKey === "orange");
-  badge.classList.toggle("severity-yellow", alertData.levelKey === "yellow");
+  badge.classList.toggle("severity-red", v.levelKey === "red");
+  badge.classList.toggle("severity-orange", v.levelKey === "orange");
+  badge.classList.toggle("severity-yellow", v.levelKey === "yellow");
+
+  renderJurisInvolucradas(operativa, mon);
+}
+
+function renderJurisInvolucradas(operativa, mon) {
+  const sec = document.getElementById("jurisInvolucradas");
+  const list = document.getElementById("jurisList");
+  const count = document.getElementById("jurisCount");
+  if (!sec || !list) return;
+  const dot = (k) => (k === "red" ? "#dc2626" : k === "orange" ? "#f59e0b" : "#eab308");
+
+  let items = [];
+  if (operativa) {
+    items = (alertData.affected || []).map((n) => ({ nombre: n, meteo: [], hidro: [] }));
+  } else if (mon.hayAlgo) {
+    items = mon.jurisdicciones || [];
+  }
+
+  if (!items.length) { sec.hidden = true; list.innerHTML = ""; if (count) count.textContent = "0"; return; }
+  sec.hidden = false;
+  if (count) count.textContent = String(items.length);
+
+  list.innerHTML = items.map((j) => {
+    const chips = [];
+    (j.meteo || []).forEach((m) => {
+      chips.push(`<span class="jc"><span class="jc-dot" style="background:${dot(m.key)}"></span>🌧️ ${_esc(m.tipo)}</span>`);
+    });
+    (j.hidro || []).forEach((h) => {
+      chips.push(`<span class="jc"><span class="jc-dot" style="background:${dot(h.key)}"></span>🌊 Crecida ${_esc(h.rio)}</span>`);
+    });
+    const causas = chips.length ? `<span class="juris-causas">${chips.join("")}</span>` : "";
+    return `<li class="juris-item"><span class="juris-name">${_esc(j.nombre)}</span>${causas}</li>`;
+  }).join("");
 }
 
 function renderMap() {
@@ -578,11 +651,14 @@ function renderConfirmations() {
       );
   const percent = totals.contacts ? Math.round((totals.confirmed / totals.contacts) * 100) : 0;
 
-  document.getElementById("ackSummary").textContent = `${totals.confirmed}/${totals.contacts}`;
-  document.getElementById("ackProgress").style.width = `${percent}%`;
+  const _ackActiva = alertData.id && alertData.id !== "\u2014" && alertData.level !== "Sin alerta";
+  const _ackSum = document.getElementById("ackSummary");
+  if (_ackSum) _ackSum.textContent = _ackActiva ? `${totals.confirmed}/${totals.contacts}` : "0/0";
+  const _ackProg = document.getElementById("ackProgress");
+  if (_ackProg) _ackProg.style.width = _ackActiva ? `${percent}%` : "0%";
 
   ackList.innerHTML = "";
-  const confirmationRows = extraRecipients.length
+  const confirmationRows = !_ackActiva ? [] : extraRecipients.length
     ? extraRecipients.slice(0, 7).map((recipient) => ({
         name: recipient.name,
         meta: `${recipient.organization} / ${recipient.jurisdiction}`,
@@ -607,6 +683,9 @@ function renderConfirmations() {
     `;
     ackList.appendChild(row);
   });
+  if (!_ackActiva) {
+    ackList.innerHTML = '<li class="ack-empty" style="color:var(--muted);padding:12px 2px;list-style:none;line-height:1.4">Sin alerta activa. Los destinatarios aparecen acá al <strong>emitir</strong> o <strong>simular</strong> una alerta.</li>';
+  }
 
   pendingList.innerHTML = "";
   const pendingRows = extraRecipients.length
@@ -649,6 +728,12 @@ function renderRecipients() {
   const rows = allRecipients();
 
   document.getElementById("recipientCount").textContent = `${rows.length} usuarios`;
+  const _pend = extraRecipients.filter((r) => (r.estadoAlta || "Activo") !== "Activo").length;
+  const _approveAll = document.getElementById("approveAllButton");
+  if (_approveAll) {
+    _approveAll.hidden = _pend === 0;
+    _approveAll.textContent = `✓ Aprobar todos (${_pend})`;
+  }
   recipientRows.innerHTML = "";
   rows.forEach((row) => {
     const tr = document.createElement("tr");
@@ -737,46 +822,116 @@ function renderHydroContext() {
     });
 }
 
+// --- Trazabilidad persistente (29/10) -----------------------------------------------
+// Cada evento se guarda en Firestore (colección "auditoria"): no se pierde al recargar,
+// se ve en todos los equipos y registra quién lo hizo. Los eventos no se pueden editar ni borrar.
+function _fechaHora(ms) {
+  const d = new Date(ms);
+  const hoy = new Date();
+  const hh = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toDateString() === hoy.toDateString()
+    ? `${hh} h`
+    : `${d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hh} h`;
+}
+
+function _operadorActual() {
+  try { return sessionStorage.getItem("crecida_user") || ""; } catch (e) { return ""; }
+}
+
 function renderTimeline() {
   timeline.innerHTML = "";
+  if (!auditEvents.length) {
+    timeline.innerHTML = '<li style="list-style:none;color:var(--muted);padding:10px 0">Todavía no hay eventos registrados.</li>';
+    return;
+  }
   auditEvents.forEach((event) => {
     const item = document.createElement("li");
+    const quien = event.operador ? `${_esc(event.actor)}<br><small>${_esc(event.operador)}</small>` : _esc(event.actor);
     item.innerHTML = `
-      <time>${event.time}</time>
-      <span><strong>${event.title}</strong>${event.detail}</span>
-      <span>${event.actor}</span>
+      <time>${_esc(event.time)}</time>
+      <span><strong>${_esc(event.title)}</strong>${_esc(event.detail)}</span>
+      <span>${quien}</span>
     `;
     timeline.appendChild(item);
   });
 }
 
+let _auditDesdeFirestore = false;
 function addAudit(title, detail, actor = "Operador") {
-  auditEvents.unshift({
-    time: `${currentTime()} h`,
-    title,
-    detail,
-    actor,
-  });
-  renderTimeline();
+  const ts = Date.now();
+  const operador = _operadorActual();
+  if (!_auditDesdeFirestore) {
+    auditEvents.unshift({ time: _fechaHora(ts), title, detail, actor, operador });
+    renderTimeline();
+  }
+  if (firebaseEnabled && firestoreDb && operador) {
+    try {
+      firestoreDb.collection("auditoria").add({
+        ts, title: String(title || ""), detail: String(detail || ""), actor: String(actor || ""), operador,
+        creadoEn: window.firebase.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
+    } catch (e) {}
+  }
+}
+
+function escucharAuditoria() {
+  if (!firebaseEnabled || !firestoreDb) return;
+  try {
+    firestoreDb.collection("auditoria").orderBy("ts", "desc").limit(200).onSnapshot((snap) => {
+      _auditDesdeFirestore = true;
+      auditEvents.length = 0;
+      snap.docs.forEach((doc) => {
+        const e = doc.data();
+        auditEvents.push({ time: _fechaHora(e.ts || Date.now()), title: e.title, detail: e.detail, actor: e.actor, operador: e.operador });
+      });
+      renderTimeline();
+    }, () => {});
+  } catch (e) {}
 }
 
 function renderActionState() {
   const distributeButton = document.getElementById("distributeButton");
   const escalateButton = document.getElementById("escalateButton");
   const actionNote = document.getElementById("actionNote");
+  const activa = !!(alertData.id && alertData.id !== "—" && alertData.level && alertData.level !== "Sin alerta");
+  const prueba = !!alertData.esPrueba;
+  const destinos = activa && !prueba && window.CRECIDA_destinatariosConEmail
+    ? window.CRECIDA_destinatariosConEmail(alertData).length : null;
 
-  distributeButton.textContent = distributed ? "Alerta distribuida" : "Distribuir alerta";
-  distributeButton.disabled = distributed;
-  escalateButton.textContent = escalated ? "Escalamiento enviado" : "Escalar faltantes";
-  escalateButton.disabled = escalated;
-
-  if (escalated) {
-    actionNote.textContent = "Defensa Civil provincial y 107 Central fueron notificados por falta de respuesta.";
-  } else if (distributed) {
-    actionNote.textContent = "Distribución registrada. El sistema espera confirmaciones y prepara escalamiento.";
-  } else {
-    actionNote.textContent = "WhatsApp individual + notificación de la app. Cada envío queda auditado.";
+  if (!distributeButton.dataset.enviando) {
+    distributeButton.textContent = distributed
+      ? "✓ Alerta enviada"
+      : prueba ? "🧪 Enviar prueba (solo a mí)"
+      : destinos != null ? `Enviar alerta por correo (${destinos})` : "Enviar alerta por correo";
+    distributeButton.disabled = distributed || !activa || destinos === 0;
   }
+  escalateButton.textContent = "Ver quién no confirmó";
+  escalateButton.className = "secondary-button";
+  escalateButton.disabled = !distributed;
+
+  if (!activa) {
+    actionNote.textContent = "Primero cargá una alerta: “＋ Nueva alerta manual” o “Cargar en alerta” desde una sugerencia.";
+  } else if (distributed) {
+    actionNote.textContent = "Enviada. Las confirmaciones llegan en vivo. A quien no confirme, escribile por WhatsApp desde “Ver quién no confirmó”.";
+  } else if (destinos === 0) {
+    actionNote.textContent = `No hay usuarios activos con email en ${alertData.affected.join(", ")}. Cargalos en “Usuarios” antes de enviar.`;
+  } else if (prueba) {
+    actionNote.textContent = "MODO PRUEBA: el correo va solo a tu casilla, marcado como prueba de funcionamiento. Nadie del padrón lo recibe.";
+  } else {
+    actionNote.textContent = `Va por correo a los usuarios activos de ${alertData.affected.join(", ")}, con botón para confirmar recepción. Antes de enviar vas a ver el resumen.`;
+  }
+
+  const nt = document.getElementById("nextActionTitle");
+  const nm = document.getElementById("nextActionMeta");
+  if (nt && nm) {
+    if (!activa) { nt.textContent = "1 · Cargar una alerta"; nm.textContent = "Desde una sugerencia o “＋ Nueva alerta manual”"; }
+    else if (!distributed) { nt.textContent = prueba ? "2 · Enviar la prueba" : "2 · Enviar la alerta"; nm.textContent = prueba ? "Solo a tu casilla" : `${destinos || 0} usuario(s) con email en la zona`; }
+    else { nt.textContent = "3 · Seguir confirmaciones"; nm.textContent = "“Ver quién no confirmó” → WhatsApp a los que faltan"; }
+  }
+  const pc = document.getElementById("pendingCount");
+  if (pc) pc.textContent = activa && !prueba && destinos != null ? `${destinos} con email` : "—";
+  const cb = document.getElementById("closeAlertButton");
+  if (cb) cb.hidden = !activa;
 }
 
 function render() {
@@ -799,38 +954,41 @@ document.querySelectorAll(".tab").forEach((tab) => {
   });
 });
 
-document.getElementById("distributeButton").addEventListener("click", () => {
-  if (distributed) return;
+// El envío real vive en envio.js: cuando termina bien, marca la alerta como enviada.
+window.CRECIDA_marcarDistribuida = (detalle) => {
   distributed = true;
   alertData.lastSync = `${currentTime()} h`;
-  addAudit(
-    "Alerta distribuida",
-    "Emails enviados con enlace de confirmación. WhatsApp disponible por destinatario.",
-    "Operador provincial",
-  );
+  addAudit("Alerta enviada", detalle || "Correos despachados con enlace de confirmación.", "Operador provincial");
+  guardarEstadoAlerta();
   render();
-});
+};
 
 document.getElementById("escalateButton").addEventListener("click", () => {
-  if (escalated) return;
-  escalated = true;
-  alertData.lastSync = `${currentTime()} h`;
-  addAudit(
-    "Escalamiento enviado",
-    "Defensa Civil provincial y 107 Central fueron notificados por falta de confirmación en Simoca.",
-    "Monitor automático",
-  );
-  render();
+  const tab = document.querySelector('.tab[data-view="alertas"]');
+  if (tab) tab.click();
+  if (window.CRECIDA_verFaltantes) window.CRECIDA_verFaltantes(alertData.id);
 });
 
 document.getElementById("addAuditButton").addEventListener("click", () => {
+  const texto = typeof window.prompt === "function" ? window.prompt("Novedad a registrar en la trazabilidad:") : "";
+  if (!texto || !texto.trim()) return;
   auditCounter += 1;
-  addAudit(
-    "Seguimiento manual",
-    `El operador registró una novedad de seguimiento (${auditCounter}).`,
-    "Sala de situación",
-  );
+  addAudit("Seguimiento manual", texto.trim().slice(0, 500), "Sala de situación");
 });
+
+// --- Detección de duplicados (mismo WhatsApp o mismo email) ---
+function _emailKey(e) { return String(e || "").trim().toLowerCase(); }
+function _phoneKey(p) { const d = String(p || "").replace(/\D/g, ""); return d ? d.slice(-10) : ""; }
+function buscarDuplicado(email, phone, exceptIndex) {
+  const ek = _emailKey(email), pk = _phoneKey(phone);
+  for (let i = 0; i < extraRecipients.length; i++) {
+    if (exceptIndex != null && i === exceptIndex) continue;
+    const r = extraRecipients[i];
+    if (ek && _emailKey(r.email) === ek) return r;
+    if (pk && _phoneKey(r.phone) === pk) return r;
+  }
+  return null;
+}
 
 recipientForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -847,6 +1005,12 @@ recipientForm.addEventListener("submit", (event) => {
     estadoAlta: "Pendiente",
     last: `${currentTime()} h`,
   };
+
+  const _dup = buscarDuplicado(recipient.email, recipient.phone, editingRecipientIndex);
+  if (_dup) {
+    window.alert(`Ya existe un usuario con ese WhatsApp o email: ${_dup.name} (${_dup.jurisdiction}). No se agregó de nuevo.`);
+    return;
+  }
 
   if (editingRecipientIndex === null) {
     extraRecipients.unshift(recipient);
@@ -892,6 +1056,9 @@ recipientRows.addEventListener("click", (event) => {
   deleteRecipient(Number(deleteButton.dataset.deleteRecipient));
 });
 
+const approveAllButton = document.getElementById("approveAllButton");
+if (approveAllButton) approveAllButton.addEventListener("click", approveAllRecipients);
+
 recipientRows.addEventListener("change", (event) => {
   const statusSelect = event.target.closest("[data-status-recipient]");
   if (!statusSelect) return;
@@ -928,6 +1095,7 @@ alertForm.addEventListener("submit", (event) => {
   }
 
   alertData.id = `MANUAL-TUC-${Date.now().toString().slice(-6)}`;
+  alertData.esPrueba = false;
   alertData.level = levelLabel(levelKey);
   alertData.levelKey = levelKey;
   alertData.title = title;
@@ -950,20 +1118,28 @@ alertForm.addEventListener("submit", (event) => {
     `${alertData.level}: ${title}. Zonas: ${affected.join(", ")}.`,
     "Super admin / sala de situación",
   );
+  guardarEstadoAlerta();
   render();
 });
 
 document.getElementById("simulateAlertButton").addEventListener("click", () => {
-  alertData.id = "ACP-SMN-TUC-ROJO";
+  alertData.id = `PRUEBA-${Date.now().toString().slice(-6)}`; // id único por simulacro
+  alertData.esPrueba = true;
+  alertData.source = "Simulacro interno";
+  alertData.sourceShort = "Prueba";
   alertData.level = "Rojo";
   alertData.levelKey = "red";
-  alertData.title = "Lluvia intensa";
+  alertData.title = "Prueba de funcionamiento (simulacro)";
   alertData.directive = "Emergencia operativa en Simoca, Monteros y Leales.";
   alertData.zoneCompact = "Simoca / Monteros / Leales";
+  alertData.affected = ["Simoca", "Monteros", "Leales"]; // zonas afectadas (recepción/envío filtran por esto)
+  alertData.issuedAt = `${currentTime()} h`;
   alertData.validUntil = "Próximas 3 h";
   alertData.lastSync = `${currentTime()} h`;
+  distributed = false;
+  escalated = false;
   alertData.message =
-    "ALERTA ROJA SIMULADA\n\nFuente: Servicio Meteorológico Nacional\nID: ACP-SMN-TUC-ROJO\n\nFenómeno: lluvia intensa con riesgo de anegamiento.\nZona afectada: Simoca - Monteros - Leales.\n\nAcción: activar responsables, confirmar recepción y reportar disponibilidad operativa.\n\nPara confirmar la recepción, usá el enlace de este mensaje.";
+    "🧪 ESTO ES UNA PRUEBA DE FUNCIONAMIENTO — NO REQUIERE NINGUNA ACCIÓN\n\nSimulacro interno del Programa CRECIDA. No es un aviso oficial del SMN ni del INA.\nID: " + alertData.id + "\n\nEscenario simulado: lluvia intensa con riesgo de anegamiento en Simoca - Monteros - Leales.\n\nPara probar el circuito, confirmá la recepción con el enlace de este mensaje.";
 
   const leales = jurisdictions.find((item) => item.name === "Leales");
   if (leales) {
@@ -973,7 +1149,8 @@ document.getElementById("simulateAlertButton").addEventListener("click", () => {
     leales.detail = "Alerta roja simulada. Falta confirmación de Defensa Civil local.";
   }
 
-  addAudit("Alerta roja simulada", "Se activó un escenario de prueba para validar diseño y flujo.", "Modo demo");
+  addAudit("Simulacro iniciado", "Prueba de funcionamiento (no oficial). El envío va solo a la casilla del operador.", "Modo prueba");
+  guardarEstadoAlerta();
   render();
 });
 
@@ -986,18 +1163,113 @@ setupAlertForm();
 initFirebase();
 render();
 loadRecipientsFromFirestore();
+escucharAuditoria();
 syncHidroData({ silent: true });
+
+// --- Alerta activa persistente (29/10) ---------------------------------------------
+// La alerta cargada se guarda en Firestore (estado/alertaActiva): sobrevive a recargas,
+// se ve igual en todos los equipos y, si ya se envió, no se puede volver a enviar.
+function guardarEstadoAlerta() {
+  if (!firebaseEnabled || !firestoreDb) return;
+  try {
+    firestoreDb.collection("estado").doc("alertaActiva").set({
+      alert: JSON.parse(JSON.stringify(alertData)),
+      distributed: !!distributed,
+      cerrada: false,
+      actualizadoEn: window.firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+function volverAReposo() {
+  Object.keys(alertData).forEach((k) => { if (!(k in ALERTA_REPOSO)) delete alertData[k]; });
+  Object.assign(alertData, JSON.parse(JSON.stringify(ALERTA_REPOSO)));
+  distributed = false;
+  escalated = false;
+}
+
+function cerrarAlertaActiva() {
+  const activa = alertData.id && alertData.id !== "—" && alertData.level !== "Sin alerta";
+  if (!activa) return;
+  if (typeof window.confirm === "function" &&
+      !window.confirm(`¿Cerrar la alerta ${alertData.id}?\n\nEl panel vuelve a "Sin alerta". El historial y las confirmaciones quedan guardados.`)) return;
+  const id = alertData.id;
+  volverAReposo();
+  addAudit("Alerta cerrada", `Se cerró la alerta ${id}. El sistema vuelve a monitoreo normal.`, "Operador provincial");
+  if (firebaseEnabled && firestoreDb) {
+    try {
+      firestoreDb.collection("estado").doc("alertaActiva").set({
+        cerrada: true,
+        ultimaCerrada: id,
+        actualizadoEn: window.firebase.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  render();
+}
+window.CRECIDA_cerrarAlerta = cerrarAlertaActiva;
+
+(function escucharEstadoAlerta() {
+  if (!firebaseEnabled || !firestoreDb) return;
+  try {
+    firestoreDb.collection("estado").doc("alertaActiva").onSnapshot((snap) => {
+      const d = snap && snap.exists ? snap.data() : null;
+      if (!d || d.cerrada || !d.alert || !d.alert.id || d.alert.id === "—") {
+        // Cerrada desde otro equipo: este también vuelve a reposo.
+        if (d && d.cerrada && alertData.id !== "—") { volverAReposo(); render(); }
+        return;
+      }
+      if (d.alert.id === alertData.id && !!d.distributed === distributed) return; // sin cambios
+      volverAReposo();
+      Object.assign(alertData, d.alert);
+      distributed = !!d.distributed;
+      render();
+    }, () => {});
+  } catch (e) {}
+})();
+
+const _btnCerrarAlerta = document.getElementById("closeAlertButton");
+if (_btnCerrarAlerta) _btnCerrarAlerta.addEventListener("click", cerrarAlertaActiva);
 
 // --- Envío: helpers compartidos ---
 function linkConfirmacionApp(row) {
   const base = location.origin;
-  return `${base}/confirmar.html?a=${encodeURIComponent(alertData.id || "")}&d=${encodeURIComponent(row.name || "")}&j=${encodeURIComponent(row.jurisdiction || "")}`;
+  return `${base}/confirmar.html?a=${encodeURIComponent(alertData.id || "")}&d=${encodeURIComponent(row.name || "")}&j=${encodeURIComponent(row.jurisdiction || "")}` + (row.firebaseId ? `&u=${encodeURIComponent(row.firebaseId)}` : "");
 }
 function waPhone(p) {
   const d = String(p || "").replace(/\D/g, "");
   return d.startsWith("54") ? d : "549" + d;
 }
-window.CRECIDA_estado = () => ({ alert: alertData, destinatarios: extraRecipients });
+window.CRECIDA_estado = () => ({ alert: alertData, destinatarios: extraRecipients, enviada: distributed });
 window.getJurisdiction = getJurisdiction;
 window.selectJurisdiction = selectJurisdiction;
 window.CRECIDA_selectedName = () => selectedJurisdiction.name;
+
+// --- Carga masiva de usuarios (importación desde Excel) ---
+window.CRECIDA_importarUsuarios = async (lista) => {
+  if (!Array.isArray(lista) || !lista.length) return { ok: 0, dup: 0 };
+  let added = 0, dup = 0;
+  lista.forEach((r) => {
+    const email = (r.email || "").trim();
+    const phone = (r.phone || "").trim();
+    // Omite si ya existe (por WhatsApp o email) o si se repite dentro de la misma planilla.
+    if (buscarDuplicado(email, phone, null)) { dup++; return; }
+    extraRecipients.unshift({
+      name: (r.name || "").trim(),
+      email: email,
+      phone: phone,
+      role: (r.role || "").trim(),
+      jurisdiction: (r.jurisdiction || "").trim(),
+      organization: (r.organization || "").trim(),
+      channel: "WhatsApp",
+      status: "Pendiente",
+      estadoAlta: "Pendiente",
+      last: `${currentTime()} h`,
+    });
+    added++;
+  });
+  try { addAudit("Carga masiva de usuarios", `Importados ${added} usuario(s) desde Excel; ${dup} ya existían (omitidos).`, "Carga operativa"); } catch (e) {}
+  render();
+  try { await saveRecipientsToFirestore(); } catch (e) {}
+  return { ok: added, dup: dup };
+};

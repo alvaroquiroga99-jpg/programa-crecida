@@ -1,4 +1,6 @@
 <!doctype html>
+<!-- Programa CRECIDA · Alerta temprana y coordinación en salud.
+     DGIME · SIPROSA Tucumán. Desarrollo: Lic. Álvaro Darío Quiroga — Sección de Higiene y Seguridad del SIPROSA. -->
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -7,17 +9,44 @@
       name="description"
       content="Programa CRECIDA para alerta temprana y coordinación operativa ante eventos hidrometeorológicos en Tucumán."
     />
+    <meta name="author" content="Lic. Álvaro Darío Quiroga — Sección de Higiene y Seguridad del SIPROSA" />
+    <meta name="owner" content="DGIME · Dirección General de Infraestructura, Mantenimiento y Equipamiento — Ministerio de Salud Pública de Tucumán (SIPROSA)" />
+    <meta name="application-name" content="Programa CRECIDA" />
+    <meta name="theme-color" content="#102a43" />
+    <link rel="icon" type="image/png" href="assets/crecida-icon.png" />
+    <link rel="apple-touch-icon" href="assets/crecida-icon.png" />
     <title>Programa CRECIDA</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="acceso" class="acceso" role="dialog" aria-label="Acceso al sistema">
+      <div class="acc-step acc-splash" id="accDgime">
+        <div class="acc-card"><img src="assets/dgime-logo.png" alt="Dirección General de Infraestructura, Mantenimiento y Equipamiento" /></div>
+      </div>
+      <form class="acc-step acc-login" id="accLogin" autocomplete="on">
+        <div class="acc-card acc-card-login">
+          <img class="acc-login-logo" src="assets/dgime-logo.png" alt="DGIME" />
+          <h2>Ingreso al sistema</h2>
+          <p class="acc-sub">Programa CRECIDA · DGIME</p>
+          <label>Email<input type="email" id="accUser" name="username" autocomplete="username" placeholder="tu@correo.com" required /></label>
+          <label>Contraseña<input type="password" id="accPass" name="password" autocomplete="current-password" placeholder="••••••••" required /></label>
+          <button type="submit" class="acc-btn">Ingresar</button>
+          <p class="acc-error" id="accError" role="alert"></p>
+          <p class="acc-nota">Acceso restringido · uso operativo</p>
+        </div>
+      </form>
+      <div class="acc-step acc-crecida" id="accCrecida">
+        <img class="acc-crecida-logo" src="assets/crecida-logo.png" alt="Programa CRECIDA" />
+      </div>
+    </div>
     <header class="command-header">
       <div class="brand-lockup" aria-label="Programa CRECIDA">
-        <div class="brand-mark">CR</div>
+        <div class="brand-mark"><img src="assets/crecida-icon.png" alt="CRECIDA" /></div>
         <div>
           <p>Alerta temprana y coordinación operativa</p>
           <h1>Programa CRECIDA</h1>
@@ -30,18 +59,17 @@
           <span>Última sincronización</span>
           <strong id="lastSync">15:41 h</strong>
         </div>
-        <div class="status-metric">
-          <span>Fuente</span>
-          <strong id="sourceShort">SMN</strong>
-        </div>
-        <button class="ghost-button" id="simulateAlertButton" type="button">
-          Probar alerta roja
+        <button class="primary-button" id="openAlertModal" type="button">＋ Nueva alerta manual</button>
+        <button class="ghost-button" id="simulateAlertButton" type="button" title="Carga una alerta de prueba. Al enviarla va solo a tu casilla, marcada como PRUEBA DE FUNCIONAMIENTO.">
+          🧪 Simulacro
         </button>
+        <button class="ghost-button" id="logoutButton" type="button" title="Cerrar sesión">⎋ Salir</button>
       </div>
     </header>
 
     <main class="command-center">
       <aside class="incident-panel" aria-label="Alerta vigente y acciones prioritarias">
+        <div class="smn-banner" id="smnBanner" role="status" aria-live="polite" hidden></div>
         <section class="incident-summary">
           <div class="incident-topline">
             <span id="alertId">ACP-SMN-TUC-1540</span>
@@ -75,25 +103,45 @@
               <dd id="affectedCount">4 afectadas</dd>
             </div>
             <div>
-              <dt>Pendientes</dt>
+              <dt>Destinatarios</dt>
               <dd id="pendingCount">3 responsables</dd>
             </div>
           </dl>
         </section>
 
         <section class="panel-section action-stack">
-          <button class="primary-button" id="distributeButton" type="button">
-            Distribuir alerta
+          <button class="primary-button" id="distributeButton" type="button" disabled>
+            Enviar alerta por correo
           </button>
-          <button class="danger-button" id="escalateButton" type="button">
-            Escalar faltantes
+          <button class="secondary-button" id="escalateButton" type="button" disabled>
+            Ver quién no confirmó
+          </button>
+          <button class="secondary-button" id="closeAlertButton" type="button" hidden title="Vuelve el panel a Sin alerta. El historial y las confirmaciones quedan guardados.">
+            Cerrar alerta
           </button>
           <p class="action-note" id="actionNote">
-            WhatsApp individual + notificación de la app. Cada envío queda auditado.
+            Primero cargá una alerta.
           </p>
+          <div class="cuota-badge" id="cuotaBadge" role="status" aria-live="polite">
+            <span class="cuota-ico" aria-hidden="true">📧</span>
+            <span class="cuota-main">
+              <span class="cuota-label">Correos hoy</span>
+              <span class="cuota-num"><b id="cuotaNum">0</b> / 100</span>
+            </span>
+            <span class="cuota-note" id="cuotaNote">100 disponibles hoy</span>
+          </div>
         </section>
 
-        <section class="panel-section">
+        <section class="panel-section juris-involucradas" id="jurisInvolucradas" hidden>
+          <div class="section-title-row">
+            <h2>Jurisdicciones involucradas</h2>
+            <span class="quiet-pill" id="jurisCount">0</span>
+          </div>
+          <ul class="juris-list" id="jurisList"></ul>
+        </section>
+
+        <!-- Panel "Recepción" oculto: la info de confirmaciones ya vive en "Alertas del día". Se mantienen #ackList/#ackSummary/#ackProgress en el DOM (ocultos) para no romper app.js/recepcion.js. -->
+        <section class="panel-section" id="recepcionPanel" hidden>
           <div class="section-title-row">
             <h2>Recepción</h2>
             <span class="quiet-pill" id="ackSummary">0/0</span>
@@ -104,7 +152,8 @@
           <ul class="ack-list" id="ackList"></ul>
         </section>
 
-        <section class="panel-section">
+        <!-- Panel "Pendientes críticos" oculto: era redundante con Recepción y mostraba todos los nombres. Se mantiene el #pendingList en el DOM (oculto) para no romper app.js. -->
+        <section class="panel-section" id="pendientesCriticos" hidden>
           <div class="section-title-row">
             <h2>Pendientes críticos</h2>
             <span class="quiet-pill">Escala automática</span>
@@ -117,8 +166,8 @@
         <nav class="tabs" aria-label="Vistas principales">
           <button class="tab active" data-view="operation" type="button">Operación</button>
           <button class="tab" data-view="contacts" type="button">Usuarios</button>
-          <button class="tab" data-view="messages" type="button">Mensajes</button>
-          <button class="tab" data-view="alertas" type="button">Alertas del día</button>
+          <button class="tab" data-view="messages" type="button">Mensaje</button>
+          <button class="tab" data-view="alertas" type="button">Confirmaciones</button>
           <button class="tab" data-view="audit" type="button">Trazabilidad</button>
         </nav>
 
@@ -129,7 +178,6 @@
                 <div>
                   <p class="eyebrow">Mapa operativo</p>
                   <h2 id="mapTitle">Departamentos de Tucumán</h2>
-                  <small style="color:var(--muted);font-size:12px;">El color refleja riesgo hidrológico en vivo (aforos INA)</small>
                 </div>
                 <div class="layer-pills" aria-label="Capas visibles">
                   <span>Riesgo territorial</span>
@@ -142,7 +190,7 @@
                 <div class="province-map" id="provinceMap" aria-label="Mapa SVG de departamentos de Tucumán"></div>
               </div>
 
-              <div class="map-legend" aria-label="Leyenda">
+              <div class="map-legend" id="mapLegend" aria-label="Leyenda" hidden>
                 <div class="legend-item legend-red">
                   <strong>Rojo</strong>
                   <span>Emergencia o escalamiento</span>
@@ -161,6 +209,30 @@
                 </div>
               </div>
 
+              <section class="pronostico-box" id="pronosticoBox" aria-label="Pronóstico de lluvia" hidden>
+                <div class="section-title-row">
+                  <div>
+                    <p class="eyebrow">Pronóstico de lluvia</p>
+                    <h2 id="pronosticoTitulo">Open-Meteo · próximas 24 h</h2>
+                  </div>
+                  <span class="pronostico-total" id="pronosticoTotal"></span>
+                </div>
+                <div class="pronostico-horas" id="pronosticoHoras"></div>
+                <small class="pronostico-fuente">Fuente: Open-Meteo (gratuito, sin registro)</small>
+              </section>
+
+              <section class="pronostico-box rios-box" id="riosBox" aria-label="Caudal de ríos" hidden>
+                <div class="section-title-row">
+                  <div>
+                    <p class="eyebrow">Caudal de ríos · pronóstico</p>
+                    <h2>GloFAS · próximos 7 días</h2>
+                  </div>
+                  <span class="rios-total" id="riosResumen"></span>
+                </div>
+                <div class="rios-lista" id="riosLista"></div>
+                <small class="pronostico-fuente">Fuente: GloFAS vía Open-Meteo (caudal modelado; complementa los aforos del INA)</small>
+              </section>
+
               <div class="external-context">
                 <div class="section-title-row">
                   <div>
@@ -176,11 +248,8 @@
               </div>
             </section>
 
-            <aside class="jurisdiction-panel" aria-label="Detalle de jurisdicción">
-              <button class="primary-button" id="openAlertModal" type="button" style="width:100%;margin-bottom:16px;">
-                ＋ Nueva alerta manual
-              </button>
-
+            <!-- Panel de detalle de jurisdicción OCULTO (se pidió ampliar el mapa). Se mantiene en el DOM para no romper app.js (selectedName, contadores, etc.). -->
+            <aside class="jurisdiction-panel" id="jurisdiccionPanel" aria-label="Detalle de jurisdicción" hidden>
               <div class="selected-header">
                 <div>
                   <p class="eyebrow">Jurisdicción seleccionada</p>
@@ -221,7 +290,10 @@
               <p class="eyebrow">Distribución inteligente</p>
               <h2>Usuarios registrados</h2>
             </div>
-            <span class="quiet-pill" id="recipientCount">0 responsables</span>
+            <div class="view-header-actions">
+              <button class="table-action approve-text-button" id="approveAllButton" type="button" hidden>✓ Aprobar todos</button>
+              <span class="quiet-pill" id="recipientCount">0 responsables</span>
+            </div>
           </div>
           <form class="recipient-form" id="recipientForm">
             <div class="form-field">
@@ -260,6 +332,22 @@
             <button class="primary-button" id="recipientSubmitButton" type="submit">Agregar responsable</button>
             <button class="secondary-button" id="cancelRecipientEditButton" type="button" hidden>Cancelar</button>
           </form>
+          <div class="bulk-import" id="bulkImport">
+            <div class="bulk-head">
+              <div>
+                <p class="eyebrow">Carga masiva</p>
+                <h3>Importar usuarios desde Excel</h3>
+              </div>
+            </div>
+            <div class="bulk-actions">
+              <button type="button" class="secondary-button" id="bulkTemplateBtn">⬇ Descargar plantilla</button>
+              <label class="primary-button bulk-file-label" for="bulkFile">⬆ Importar Excel</label>
+              <input type="file" id="bulkFile" accept=".xlsx,.xls,.csv" hidden />
+            </div>
+            <p class="bulk-hint">Columnas: <strong>Responsable, Email, WhatsApp, Función, Jurisdicción, Organismo</strong>. <strong>WhatsApp</strong> es obligatorio (el email es opcional pero recomendado). Descargá la plantilla para ver los valores válidos. No se cargan duplicados (mismo WhatsApp o email). <strong>Jurisdicción y Organismo</strong> se eligen de una lista en la plantilla. Los usuarios quedan <strong>Pendientes</strong> para aprobar.</p>
+            <div class="bulk-result" id="bulkResult" hidden></div>
+          </div>
+
           <div class="recipient-table-wrap">
             <table class="recipient-table">
               <thead>
@@ -284,8 +372,8 @@
             <article class="message-preview">
               <div class="view-header">
                 <div>
-                  <p class="eyebrow">WhatsApp operativo</p>
-                  <h2>Plantilla automática</h2>
+                  <p class="eyebrow">Vista previa</p>
+                  <h2>Mensaje que se envía</h2>
                 </div>
                 <span class="quiet-pill">Confirmación requerida</span>
               </div>
@@ -301,13 +389,11 @@
                   <h2>Distribución y contingencia</h2>
                 </div>
               </div>
-              <div class="channel-list">
-                <label><input type="checkbox" checked /> WhatsApp individual</label>
-                <label><input type="checkbox" checked /> Notificación dentro de la app</label>
-                <label><input type="checkbox" checked /> Registro de auditoría</label>
-                <label><input type="checkbox" /> SMS para alerta roja</label>
-                <label><input type="checkbox" /> Correo institucional</label>
-              </div>
+              <ul class="channel-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px;line-height:1.45">
+                <li><strong>📧 Correo — automático.</strong> Botón “Enviar alerta por correo”: llega a los usuarios activos de los departamentos de la alerta, con un botón para confirmar recepción. Tope: 100 correos por día (Gmail).</li>
+                <li><strong>💬 WhatsApp — manual.</strong> En “Ver quién no confirmó”, cada persona que falta tiene su botón de WhatsApp con el mensaje y el enlace de confirmación ya armados.</li>
+                <li><strong>🧪 Simulacro.</strong> Envía solo a tu casilla, marcado como PRUEBA DE FUNCIONAMIENTO.</li>
+              </ul>
             </article>
           </div>
         </section>
@@ -387,6 +473,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@1.7.0/dist/leaflet-velocity.min.js"></script>
     <script src="map-data.js"></script>
     <script src="ina.js"></script>
     <script src="app.js"></script>
@@ -395,9 +482,20 @@
     <script src="capas.js"></script>
     <script src="reglas.js"></script>
     <script src="motor.js"></script>
+    <script src="tendencias.js"></script>
     <script src="envio.js"></script>
+    <script src="cuota.js"></script>
     <script src="recepcion.js"></script>
     <script src="alertas.js"></script>
+    <script src="pronostico.js"></script>
+    <script src="rios.js"></script>
+    <script src="viento.js"></script>
+    <script src="precipitacion.js"></script>
+    <script src="ayuda.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="acceso.js"></script>
+    <script src="usuarios-import.js"></script>
     <script>
       (function () {
         const modal = document.getElementById("alertModal");

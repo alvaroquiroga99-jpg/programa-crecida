@@ -17,18 +17,26 @@
     const sum = document.getElementById("ackSummary");
     const prog = document.getElementById("ackProgress");
     const id = alert && alert.id;
-    // Solo los destinatarios de las jurisdicciones afectadas por la alerta activa
-    const af = (alert && alert.affected) || [];
-    let dests = todos;
-    if (id && af.length) {
-      const enZona = todos.filter((r) => af.includes(r.jurisdiction));
-      dests = enZona.length ? enZona : todos;
-    }
-
-    const porSlug = {};
-    confs.filter((c) => id && c.alerta === id).forEach((c) => { porSlug[c.destSlug] = c; });
+    // ¿Hay una alerta activa? (emitida o simulada). En reposo id === "—" y level === "Sin alerta".
+    const activa = !!(id && id !== "—" && alert.level && alert.level !== "Sin alerta");
 
     ackList.innerHTML = "";
+    // Sin alerta activa: NO listar destinatarios. Aparecen recién al emitir o simular una alerta.
+    if (!activa) {
+      ackList.innerHTML = '<li class="ack-empty" style="color:var(--muted);padding:12px 2px;list-style:none;line-height:1.4">Sin alerta activa. Los destinatarios aparecen acá al <strong>emitir</strong> o <strong>simular</strong> una alerta.</li>';
+      if (sum) sum.textContent = "0/0";
+      if (prog) prog.style.width = "0%";
+      return;
+    }
+
+    // Alerta activa: solo los destinatarios de las jurisdicciones afectadas
+    const nz = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const af = new Set(((alert && alert.affected) || []).map(nz));
+    const dests = todos.filter((r) => af.has(nz(r.jurisdiction)));
+
+    const porSlug = {};
+    confs.filter((c) => c.alerta === id).forEach((c) => { porSlug[c.destSlug] = c; });
+
     if (!dests.length) {
       ackList.innerHTML = '<li style="color:var(--muted);padding:8px 0;list-style:none">Sin destinatarios cargados todavía.</li>';
       if (sum) sum.textContent = "0/0";

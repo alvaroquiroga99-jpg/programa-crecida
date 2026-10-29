@@ -9,4 +9,4 @@ window.CRECIDA_FIREBASE_CONFIG = {
 
 // Envío de mail por Apps Script (pegar la URL /exec de tu web app):
 window.CRECIDA_MAIL_URL = "https://script.google.com/macros/s/AKfycbzUdVmVw9ayV4RFSxBwr1779yySu6KSQUjbrtjVMDzyRTsuDov9Lqgpx9Jk__ESu07Z/exec";
-window.CRECIDA_MAIL_CLAVE = "crecida2026";
+// La clave del correo ya no se usa: el Apps Script valida la sesión de Firebase (29/10).

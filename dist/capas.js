@@ -133,6 +133,7 @@
         nombre: cfg.nombre(d) || cfg.titulo,
         sub: (cfg.sub(d) || "").trim(),
         color: (cfg.colorItem && cfg.colorItem(d)) || cfg.color,
+        dep: (d.departamento || ""),
         detalle: cfg.detalle(d).filter(([, v]) => v),
       }))
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
@@ -153,7 +154,7 @@
       if (!st.activa || !st.items) return;
 
       const icono = ((CAPAS[id].chip || "").trim().split(/\s+/)[0]) || "";
-      const pocos = st.items.length <= 60; // capas con pocos puntos -> ícono grande + pulso
+      const pocos = st.items.length <= 150; // capas con pocos puntos -> ícono grande + pulso
       st.items.forEach((p) => {
         const [x, y] = window.latLonToSvg(p.lat, p.lon);
         const m = window.makeSvgElement("g", {
@@ -183,6 +184,18 @@
     });
 
     svg.appendChild(grupo);
+  }
+
+  // ── Contenido del globo (popup) al hacer clic en un punto ──────────
+  function popupHTML(id, p) {
+    const filas = (p.detalle || [])
+      .map(([k, v]) => `<div class="cp-row"><span>${k}</span><strong>${v}</strong></div>`)
+      .join("");
+    return `<div class="cp-card" style="--cp:${p.color || "#0e6e8c"}">
+        <p class="cp-eyebrow">${CAPAS[id].titulo}</p>
+        <h3 class="cp-nombre">${p.nombre || ""}</h3>
+        ${filas || '<p class="cp-empty">Sin datos adicionales.</p>'}
+      </div>`;
   }
 
   // ── Inspector flotante al hacer clic en un punto ───────────────────
@@ -259,8 +272,8 @@
     if (window.CRECIDA_MAPA) {
       if (st.activa && st.items) {
         const icono = ((CAPAS[id].chip || "").trim().split(/\s+/)[0]) || "";
-        const pocos = st.items.length <= 60;
-        window.CRECIDA_MAPA.setCapa(id, st.items, { color: CAPAS[id].color, icono: icono, pocos: pocos, onClick: (p) => abrirInspector(id, p) });
+        const pocos = st.items.length <= 150;
+        window.CRECIDA_MAPA.setCapa(id, st.items, { color: CAPAS[id].color, icono: icono, pocos: pocos, popup: (p) => popupHTML(id, p) });
       } else {
         window.CRECIDA_MAPA.clearCapa(id);
       }
@@ -269,10 +282,43 @@
     renderLeyendaEfectores();
   }
 
+  // ── Efectores por Área Programática (se dibujan desde el chip de Áreas) ──
+  const DEP_AREA = {
+    "lules":"oeste","famailla":"oeste","yerba buena":"oeste","tafi viejo":"oeste","tafi del valle":"oeste","trancas":"oeste",
+    "monteros":"sur","simoca":"sur","chicligasta":"sur","rio chico":"sur","juan bautista alberdi":"sur","graneros":"sur","la cocha":"sur",
+    "leales":"este","burruyacu":"este","cruz alta":"este",
+    "capital":"centro"
+  };
+  function normDep(x) { return (x || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim(); }
+
+  async function dibujarEfectoresArea(areaId) {
+    const st = estado.efectores;
+    if (!st.items && !st.cargando) {
+      st.cargando = true;
+      try { st.items = await traerCapa("efectores"); } catch (e) { st.items = []; }
+      st.cargando = false;
+    }
+    const items = (st.items || []).filter((p) => areaId === "todas" ? true : DEP_AREA[normDep(p.dep)] === areaId);
+    st.activa = true;
+    const pocos = items.length <= 150;
+    if (window.CRECIDA_MAPA) {
+      window.CRECIDA_MAPA.setCapa("efectores", items, { color: CAPAS.efectores.color, icono: "🏥", pocos: pocos, popup: (p) => popupHTML("efectores", p) });
+    }
+    const chip = document.getElementById("capa_efectores"); if (chip) chip.classList.add("activo");
+    renderLeyendaEfectores();
+  }
+  function apagarEfectoresArea() {
+    estado.efectores.activa = false;
+    if (window.CRECIDA_MAPA) window.CRECIDA_MAPA.clearCapa("efectores");
+    const chip = document.getElementById("capa_efectores"); if (chip) chip.classList.remove("activo");
+    renderLeyendaEfectores();
+  }
+
   function construirBarra() {
     if (document.getElementById("capasPanel")) return;
-    const panel = document.querySelector(".jurisdiction-panel");
-    if (!panel) return;
+    const mapSurface = document.querySelector(".map-surface");
+    const mapBody = mapSurface && mapSurface.querySelector(".map-body");
+    if (!mapSurface || !mapBody) return;
 
     const card = document.createElement("section");
     card.id = "capasPanel";
@@ -289,18 +335,220 @@
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "capa-chip";
+      chip.id = "capa_" + id;
       chip.textContent = CAPAS[id].chip;
       chip.addEventListener("click", () => alternarCapa(id, chip));
       barra.appendChild(chip);
     });
+    // chip de vista regional (radar/contexto de provincias vecinas)
+    const regChip = document.createElement("button");
+    regChip.type = "button";
+    regChip.className = "capa-chip";
+    regChip.id = "capaRegional";
+    regChip.textContent = "🛰️ Vista regional";
+    regChip.addEventListener("click", async () => {
+      if (!window.CRECIDA_MAPA || !window.CRECIDA_MAPA.vistaRegional) return;
+      const activar = !regChip.classList.contains("activo");
+      window.CRECIDA_MAPA.vistaRegional(activar);
+      regChip.classList.toggle("activo", activar);
+      regChip.textContent = activar ? "🛰️ Volver a Tucumán" : "🛰️ Vista regional";
+    });
+    barra.appendChild(regChip);
+
+    // chip de viento (capa animada, Open-Meteo)
+    const vientoChip = document.createElement("button");
+    vientoChip.type = "button";
+    vientoChip.className = "capa-chip";
+    vientoChip.id = "capaViento";
+    vientoChip.textContent = "💨 Viento";
+    vientoChip.addEventListener("click", async () => {
+      if (!window.CRECIDA_viento) return;
+      const enc = !vientoChip.classList.contains("activo");
+      vientoChip.classList.add("cargando");
+      const ok = await window.CRECIDA_viento.toggle(enc);
+      vientoChip.classList.remove("cargando");
+      vientoChip.classList.toggle("activo", enc && ok);
+    });
+    barra.appendChild(vientoChip);
+
+    // chip de Precipitación (Open-Meteo, cubre Tucumán donde el radar no llega)
+    const precipChip = document.createElement("button");
+    precipChip.type = "button";
+    precipChip.className = "capa-chip";
+    precipChip.id = "capaPrecip";
+    precipChip.textContent = "🌦️ Precipitación";
+    const precipLeg = document.createElement("div");
+    precipLeg.id = "precipLeg";
+    precipLeg.className = "precip-leg";
+    precipLeg.hidden = true;
+    precipLeg.innerHTML =
+      '<span class="pl-t">Lluvia · modelo Open-Meteo (mm/h)</span>' +
+      '<span class="pl-i"><i style="background:#93c5fd"></i>llovizna</span>' +
+      '<span class="pl-i"><i style="background:#3b82f6"></i>leve</span>' +
+      '<span class="pl-i"><i style="background:#1d4ed8"></i>moderada</span>' +
+      '<span class="pl-i"><i style="background:#f59e0b"></i>intensa</span>' +
+      '<span class="pl-i"><i style="background:#dc2626"></i>muy intensa</span>' +
+      '<small class="pl-note" id="precipNote"></small>';
+    precipChip.addEventListener("click", async () => {
+      if (!window.CRECIDA_precip) return;
+      const enc = !precipChip.classList.contains("activo");
+      precipChip.classList.add("cargando");
+      const ok = await window.CRECIDA_precip.toggle(enc);
+      precipChip.classList.remove("cargando");
+      precipChip.classList.toggle("activo", enc && ok);
+      precipLeg.hidden = !(enc && ok);
+      const note = document.getElementById("precipNote");
+      if (note) note.textContent = (enc && ok && !window.CRECIDA_precipHay) ? "Sin lluvia en la región en este momento." : "";
+    });
+    window.CRECIDA_onPrecip = function (hay) {
+      const note = document.getElementById("precipNote");
+      if (note) note.textContent = hay ? "" : "Sin lluvia en la región en este momento.";
+    };
+    barra.appendChild(precipChip);
+
+    // chip de Temperatura (Open-Meteo) — para golpe de calor del Niño
+    const tempChip = document.createElement("button");
+    tempChip.type = "button";
+    tempChip.className = "capa-chip";
+    tempChip.id = "capaTemp";
+    tempChip.textContent = "🌡️ Temperatura";
+    const tempLeg = document.createElement("div");
+    tempLeg.id = "tempLeg";
+    tempLeg.className = "precip-leg";
+    tempLeg.hidden = true;
+    tempLeg.innerHTML =
+      '<span class="pl-t">Temperatura · modelo Open-Meteo (°C)</span>' +
+      '<span class="pl-i"><i style="background:#2563eb"></i>frío</span>' +
+      '<span class="pl-i"><i style="background:#22d3ee"></i>templado</span>' +
+      '<span class="pl-i"><i style="background:#fde047"></i>cálido</span>' +
+      '<span class="pl-i"><i style="background:#f59e0b"></i>calor</span>' +
+      '<span class="pl-i"><i style="background:#dc2626"></i>extremo</span>';
+    tempChip.addEventListener("click", async () => {
+      if (!window.CRECIDA_temp) return;
+      const enc = !tempChip.classList.contains("activo");
+      tempChip.classList.add("cargando");
+      const ok = await window.CRECIDA_temp.toggle(enc);
+      tempChip.classList.remove("cargando");
+      tempChip.classList.toggle("activo", enc && ok);
+      tempLeg.hidden = !(enc && ok);
+    });
+    barra.appendChild(tempChip);
+
+    // chip de riesgo hídrico INA (coloreo de departamentos, apagado por defecto)
+    const riesgoChip = document.createElement("button");
+    riesgoChip.type = "button";
+    riesgoChip.className = "capa-chip";
+    riesgoChip.id = "capaRiesgo";
+    riesgoChip.textContent = "🎨 Riesgo hídrico (INA)";
+    riesgoChip.addEventListener("click", () => {
+      if (!window.CRECIDA_MAPA || !window.CRECIDA_MAPA.toggleRiesgo) return;
+      const on = !riesgoChip.classList.contains("activo");
+      window.CRECIDA_MAPA.toggleRiesgo(on);
+      riesgoChip.classList.toggle("activo", on);
+      // mostrar/ocultar las pastillas de aforos INA junto con el coloreo
+      window.CRECIDA_inaVisible = on;
+      if (window.CRECIDA_renderTrendSignals) window.CRECIDA_renderTrendSignals();
+      const leg = document.getElementById("mapLegend");
+      if (leg) leg.hidden = !on;
+      const sub = document.getElementById("mapSubtitle");
+      if (sub) sub.textContent = on
+        ? "El color refleja riesgo hidrológico en vivo (aforos INA)."
+        : "Activá “Riesgo hídrico (INA)” en Capas para colorear por aforos.";
+    });
+    barra.appendChild(riesgoChip);
+
+    // chip de Áreas Programáticas SIPROSA (polígonos por área + selector)
+    const AREA_OPTS = [
+      { id: "todas",  label: "Todas",  color: "#64748b" },
+      { id: "oeste",  label: "Oeste",  color: "#4f46e5" },
+      { id: "sur",    label: "Sur",    color: "#c026d3" },
+      { id: "este",   label: "Este",   color: "#0891b2" },
+      { id: "centro", label: "Centro", color: "#475569" },
+    ];
+    const areasChip = document.createElement("button");
+    areasChip.type = "button";
+    areasChip.className = "capa-chip";
+    areasChip.id = "capaAreas";
+    areasChip.textContent = "🗂️ Áreas programáticas";
+
+    let areaSel = "todas";
+    const areasOpts = document.createElement("div");
+    areasOpts.id = "areasOpts";
+    areasOpts.className = "area-opts";
+    areasOpts.hidden = true;
+    AREA_OPTS.forEach((o) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "area-opt" + (o.id === "todas" ? " activo" : "");
+      b.dataset.area = o.id;
+      b.innerHTML = (o.id === "todas" ? "" : '<i style="background:' + o.color + '"></i>') + o.label;
+      b.addEventListener("click", () => {
+        if (!window.CRECIDA_MAPA || !window.CRECIDA_MAPA.setAreaFiltro) return;
+        window.CRECIDA_MAPA.setAreaFiltro(o.id);
+        areaSel = o.id;
+        areasOpts.querySelectorAll(".area-opt").forEach((x) => x.classList.toggle("activo", x === b));
+        if (areasChip.classList.contains("activo")) dibujarEfectoresArea(o.id);
+      });
+      areasOpts.appendChild(b);
+    });
+
+    areasChip.addEventListener("click", () => {
+      if (!window.CRECIDA_MAPA || !window.CRECIDA_MAPA.toggleAreas) return;
+      const on = !areasChip.classList.contains("activo");
+      window.CRECIDA_MAPA.toggleAreas(on);
+      areasChip.classList.toggle("activo", on);
+      areasOpts.hidden = !on;
+      // Efectores dentro de Áreas: al prender, salen los efectores del área elegida; al apagar, se van.
+      if (on) dibujarEfectoresArea(areaSel);
+      else apagarEfectoresArea();
+    });
+    barra.appendChild(areasChip);
+
+    // chip de Ríos (hidrografía ligada al INA)
+    const riosChip = document.createElement("button");
+    riosChip.type = "button";
+    riosChip.className = "capa-chip";
+    riosChip.id = "capaRios";
+    riosChip.textContent = "🌊 Ríos (INA)";
+    const riosLeg = document.createElement("div");
+    riosLeg.id = "riosLeg";
+    riosLeg.className = "rios-leg";
+    riosLeg.hidden = true;
+    riosLeg.innerHTML =
+      '<span class="rl-t">Ríos · estado INA</span>' +
+      '<span class="rl-i"><i style="background:#60a5fa"></i>cauce</span>' +
+      '<span class="rl-i"><i style="background:#2563eb"></i>con aforo</span>' +
+      '<span class="rl-i"><i style="background:#f59e0b"></i>alerta</span>' +
+      '<span class="rl-i"><i style="background:#dc2626"></i>evacuación</span>' +
+      '<span class="rl-i"><b style="color:#0ea5e9">\u25C9</b> crecida</span>';
+    riosChip.addEventListener("click", () => {
+      if (!window.CRECIDA_MAPA || !window.CRECIDA_MAPA.toggleRios) return;
+      const on = !riosChip.classList.contains("activo");
+      window.CRECIDA_MAPA.toggleRios(on);
+      riosChip.classList.toggle("activo", on);
+      riosLeg.hidden = !on;
+    });
+    barra.appendChild(riosChip);
+
     card.appendChild(barra);
+    card.appendChild(areasOpts);
+    card.appendChild(riosLeg);
 
     const leg = document.createElement("div");
     leg.id = "capasLegend";
     card.appendChild(leg);
 
-    const ref = panel.querySelector(".selected-header");
-    if (ref) panel.insertBefore(card, ref); else panel.appendChild(card);
+    card.appendChild(precipLeg);
+    card.appendChild(tempLeg);
+
+    // Barra de capas ARRIBA del mapa, debajo del título (antes del cuerpo del mapa)
+    function ubicar() {
+      if (card.parentNode !== mapSurface || card.nextElementSibling !== mapBody) {
+        mapSurface.insertBefore(card, mapBody);
+      }
+    }
+    ubicar();
+    [200, 800, 2000].forEach((d) => setTimeout(ubicar, d));
   }
 
   // ── Estilos mínimos propios (no dependen de styles.css) ────────────

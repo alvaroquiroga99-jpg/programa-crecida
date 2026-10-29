@@ -1,92 +1,71 @@
 rules_version = '2';
 
+// Programa CRECIDA — reglas con login real (29/10).
+// Solo las cuentas de la lista OPERADORES pueden ver y modificar el padrón, las alertas y la cuota.
+// Para sumar un operador: crear la cuenta en Firebase (Authentication) y agregar su email abajo.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null;
     }
 
-    function role() {
-      return signedIn() && request.auth.token.role != null ? request.auth.token.role : "USUARIO_OPERATIVO";
+    function operador() {
+      return signedIn() && request.auth.token.email != null
+        && request.auth.token.email.lower() in [
+          "alvaro.quiroga99@gmail.com"
+        ];
     }
 
-    function isSuperAdmin() {
-      return role() == "SUPER_ADMIN";
+    // --- Colecciones de la versión anterior (sin uso en la app actual) ---
+    match /alerts/{alertId} { allow read, write: if operador(); }
+    match /recipients/{recipientId} { allow read, write: if operador(); }
+    match /acknowledgements/{ackId} { allow read, write: if operador(); }
+    match /auditLog/{eventId} { allow read, create: if operador(); allow update, delete: if false; }
+    match /settings/{docId} { allow read, write: if operador(); }
+    match /externalCache/{docId} { allow read: if signedIn(); allow write: if false; }
+
+    // --- Datos públicos de monitoreo (los escribe el vigía por Admin SDK) ---
+    match /smn/{docId} { allow read: if true; allow write: if false; }
+    match /capas/{docId} { allow read: if true; allow write: if false; }
+    match /sistema/{docId} { allow read: if true; allow write: if false; }
+
+    // --- Confirmaciones: el destinatario confirma desde el enlace, SIN login.
+    //     Solo puede escribir estos campos; leerlas es solo para operadores.
+    match /confirmaciones/{docId} {
+      allow read: if operador();
+      allow create, update: if request.resource.data.keys().hasOnly(
+          ["alerta", "dest", "destSlug", "destId", "jurisdiction", "ts", "confirmadoEn"])
+        && request.resource.data.alerta is string && request.resource.data.alerta.size() < 80
+        && request.resource.data.dest is string && request.resource.data.dest.size() < 160;
+      allow delete: if false;
     }
 
-    function isAdmin() {
-      return role() in ["SUPER_ADMIN", "ADMIN"];
+    // --- Padrón de destinatarios (datos personales): solo operadores ---
+    match /destinatarios/{docId} {
+      allow read, create, update, delete: if operador();
     }
 
-    match /alerts/{alertId} {
-      allow read: if signedIn();
-      allow create, update: if isAdmin();
-      allow delete: if isSuperAdmin();
+    // --- Alertas emitidas: solo operadores ---
+    match /alertas/{docId} {
+      allow read, create, update: if operador();
+      allow delete: if false;
     }
 
-    match /recipients/{recipientId} {
-      allow read: if signedIn();
-      allow create, update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    match /acknowledgements/{ackId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn();
-      allow delete: if isAdmin();
-    }
-
-    match /auditLog/{eventId} {
-      allow read: if isAdmin();
-      allow create: if signedIn();
+    // --- Trazabilidad: se agrega, nunca se edita ni se borra ---
+    match /auditoria/{docId} {
+      allow read, create: if operador();
       allow update, delete: if false;
     }
 
-    match /settings/{docId} {
-      allow read: if signedIn();
-      allow write: if isSuperAdmin();
+    // --- Alerta activa (la que está cargada en el panel) ---
+    match /estado/{docId} {
+      allow read, write: if operador();
     }
 
-    match /externalCache/{docId} {
-      allow read: if signedIn();
-      allow write: if false;
-    }
-
-    // --- Datos públicos de monitoreo (los escribe el vigía por Admin SDK) ---
-    match /smn/{docId} {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    match /capas/{docId} {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    match /sistema/{docId} {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    // --- Confirmaciones de recepción (el destinatario confirma desde el link del mensaje) ---
-    match /confirmaciones/{docId} {
-      allow read: if true;
-      allow create, update: if true;
+    // --- Contador de cuota diaria de email ---
+    match /cuota/{docId} {
+      allow read, create, update: if operador();
       allow delete: if false;
     }
-
-    // --- Destinatarios compartidos (demo sin login; luego se restringe por rol) ---
-    match /destinatarios/{docId} {
-      allow read: if true;
-      allow create, update, delete: if true;
-    }
-
-    // --- Alertas emitidas (registro del día; las escribe la app al distribuir) ---
-    match /alertas/{docId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if false;
-    }
-
   }
 }

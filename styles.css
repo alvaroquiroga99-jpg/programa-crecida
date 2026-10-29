@@ -199,6 +199,10 @@ h3 {
 .panel-section { padding: 16px 20px; border-bottom: 1px solid var(--line); }
 .panel-section:last-child { border-bottom: 0; }
 
+/* Sugerencias INA movido al panel izquierdo: se integra como sección flush (no tarjeta) debajo de la alerta SMN */
+.incident-panel > #sugerenciasPanel { background: transparent; border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 16px 20px; border-top: 1px solid var(--line); }
+@media (prefers-color-scheme: dark) { .incident-panel > #sugerenciasPanel { background: transparent; } }
+
 .compact-facts dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
 .compact-facts div {
   padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--r-sm);
@@ -216,6 +220,7 @@ h3 {
   font-weight: 700; font-size: 14px; letter-spacing: 0.01em;
 }
 .primary-button { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(14,110,140,0.28); }
+.header-status #openAlertModal { min-height: 40px; padding: 0 16px; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .danger-button { background: var(--red); color: #fff; }
 .secondary-button { background: #fff; border-color: var(--line-strong); color: var(--ink); }
 .compact-button { min-height: 34px; padding: 0 12px; font-size: 12px; border-radius: var(--r-pill); }
@@ -276,7 +281,7 @@ h3 {
 
 /* ===================== OPERACIÓN ===================== */
 .operation-layout {
-  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start;
 }
 
 .map-surface, .jurisdiction-panel, .message-preview, .channel-panel, .recipient-table-wrap {
@@ -460,13 +465,12 @@ h3 {
 #sugerenciasPanel .sp-count { font-size: 12px; font-weight: 600; color: var(--muted); }
 #sugerenciasPanel #spRefresh { min-height: 34px; border: 1px solid var(--line-strong); background: #fff; border-radius: var(--r-pill); padding: 0 13px; font-size: 12.5px; font-weight: 700; color: var(--ink); cursor: pointer; }
 #sugerenciasPanel .sp-body { padding: 0 18px; }
-#sugerenciasPanel .sp-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
-#sugerenciasPanel .sp-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
-#sugerenciasPanel .sp-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-#sugerenciasPanel .sp-info strong { font-size: 13.5px; }
-#sugerenciasPanel .sp-info span { color: var(--muted); font-size: 12px; }
+#sugerenciasPanel .sp-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 11px 0; border-top: 1px solid var(--line); }
+#sugerenciasPanel .sp-line { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+#sugerenciasPanel .sp-line strong { color: var(--ink); font-weight: 700; font-size: 13px; }
+#sugerenciasPanel .sp-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 #sugerenciasPanel .sp-deptos { color: var(--ink-soft) !important; font-weight: 600; }
-#sugerenciasPanel .sp-load { min-height: 36px; border: none; background: var(--accent); color: #fff; border-radius: var(--r-sm); padding: 0 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; flex: 0 0 auto; }
+#sugerenciasPanel .sp-load { border: none; background: var(--accent); color: #fff; border-radius: var(--r-sm); padding: 5px 11px; font-size: 11px; font-weight: 700; cursor: pointer; align-self: flex-start; }
 #sugerenciasPanel .sp-load:hover { background: var(--accent-ink); }
 #sugerenciasPanel .sp-empty { color: var(--muted); padding: 4px 0 14px; margin: 0; }
 #sugerenciasPanel .sp-foot { margin: 0; padding: 11px 18px; font-size: 11.5px; color: var(--muted); background: var(--surface-muted); border-top: 1px solid var(--line); }
@@ -513,8 +517,7 @@ h3 {
   .compact-facts dl, .metric-grid, .map-legend, .hydro-summary, .hydro-list { grid-template-columns: 1fr 1fr; }
   .recipient-form { grid-template-columns: 1fr; }
   .map-body { min-height: auto; }
-  #sugerenciasPanel .sp-row { flex-wrap: wrap; }
-  #sugerenciasPanel .sp-load { width: 100%; }
+  #sugerenciasPanel .sp-load { width: auto; }
   .timeline li { grid-template-columns: 1fr; gap: 4px; }
 }
 
@@ -526,8 +529,13 @@ h3 {
 .sp-smn { padding: 10px 0 2px; }
 .sp-smn > strong { display: block; color: var(--red); font-size: 13px; margin-bottom: 6px; }
 .sp-smn-item { font-size: 12.5px; color: var(--ink-soft); padding: 5px 0; border-top: 1px dashed var(--line); }
-.jurisdiction-panel > #sugerenciasPanel { margin: -16px -16px 16px; border: 0; border-top: 3px solid var(--accent); border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; box-shadow: none; }
-@media (min-width: 1181px) { .operation-layout { grid-template-columns: minmax(0, 1fr) 400px; } }
+/* Filtros (capas) como encabezado flush del panel derecho */
+.jurisdiction-panel > #capasPanel { margin: -16px -16px 14px; padding: 14px 16px 12px; border-top: 3px solid var(--accent); border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; background: #fff; }
+.jurisdiction-panel > #capasPanel > h3 { margin: 0 0 10px; }
+/* Sugerencias INA: bloque normal debajo (sin el margen negativo que lo hacía pisarse) */
+.jurisdiction-panel > #sugerenciasPanel { margin: 0 0 16px; border: 0; box-shadow: none; padding: 0; }
+
+@media (min-width: 1181px) { .operation-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* Botón WhatsApp en la tabla de destinatarios */
 .wa-text-button { border: 1px solid #25d366; background: #e7f9ee; color: #0b7a3b; text-decoration: none; display: inline-flex; align-items: center; }
@@ -537,6 +545,10 @@ h3 {
 .capas-panel { margin-top: 18px; }
 .capas-panel > h3 { margin: 0 0 8px; }
 .capas-panel #capasBar { margin-top: 0; }
+
+/* Barra de capas movida ARRIBA del mapa (debajo del título) */
+.map-surface > #capasPanel { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.map-surface > #capasPanel > h3 { margin: 0 0 8px; }
 #capasLegend {
   display: none;
   margin-top: 10px;
@@ -602,12 +614,289 @@ h3 {
 @media (prefers-reduced-motion: reduce) { .capa-marker.es-icono .capa-halo { animation: none; opacity: .3; } }
 
 /* ── Mapa Leaflet (reemplaza el SVG) ── */
-.province-map { display: block !important; padding: 0; overflow: hidden; border-radius: 14px; }
-.leaflet-container { width: 100%; height: 100%; background: #dfe6ea; font: inherit; }
+.province-map { display: block !important; padding: 0; overflow: hidden; border-radius: 14px; position: relative; z-index: 0; isolation: isolate; }
+.leaflet-container { width: 100%; background: #dfe6ea; font: inherit; }
+#provinceMap.leaflet-container { height: 430px; min-height: 430px; }
 .crecida-pin { background: transparent; border: 0; }
 .lpin { position: relative; width: 30px; height: 30px; }
 .lpin .lpulse { position: absolute; inset: 0; border-radius: 50%; background: var(--c); opacity: .5; animation: lpp 1.7s ease-out infinite; }
 .lpin .ldot { position: absolute; inset: 5px; border-radius: 50%; background: var(--c); border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
 @keyframes lpp { 0% { transform: scale(.55); opacity: .55; } 70% { opacity: 0; } 100% { transform: scale(2.2); opacity: 0; } }
 .ldotmini { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
-@media (prefers-reduced-motion: reduce) { .lpin .lpulse { animation: none; opacity: .35; } }
+.trend-marker {
+  position: relative;
+  width: 78px;
+  height: 52px;
+  transform: translate(var(--trend-dx, 0), var(--trend-dy, 0));
+  pointer-events: auto;
+}
+.trend-pulse {
+  position: absolute;
+  left: 6px;
+  top: 19px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--trend-color);
+  opacity: .5;
+  animation: trendPulse 1.8s ease-out infinite;
+}
+.trend-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  gap: 1px;
+  min-width: 66px;
+  padding: 5px 7px;
+  border: 2px solid #fff;
+  border-left: 4px solid var(--trend-color);
+  border-radius: 9px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 8px 22px rgba(15,23,42,.25);
+  color: var(--ink);
+  line-height: 1.05;
+}
+.trend-card::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
+  background: rgba(255,255,255,.96);
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
+}
+.trend-card strong {
+  color: var(--trend-color);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+.trend-card strong b {
+  font-size: 13px;
+  line-height: 0;
+}
+.trend-card span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.trend-card small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+.trend-baja .trend-card { border-left-color: #2563eb; }
+@keyframes trendPulse {
+  0% { transform: scale(.55); opacity: .5; }
+  70% { opacity: 0; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lpin .lpulse,
+  .trend-pulse { animation: none; opacity: .35; }
+}
+
+/* ── Pronóstico de lluvia (Open-Meteo) ───────────────────────────── */
+.pronostico-box { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border, #e2e8f0); border-radius: 14px; background: #f8fafc; }
+.pronostico-box .section-title-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.pronostico-total { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+.pronostico-total.lluvia-nula { color: #16a34a; }
+.pronostico-total.lluvia-leve { color: #0ea5e9; }
+.pronostico-total.lluvia-media { color: #f59e0b; }
+.pronostico-total.lluvia-fuerte { color: #dc2626; }
+.pronostico-horas { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.pron-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px; border-radius: 9px; background: #eef2f6; }
+.pron-cell .pron-h { font-size: 11px; color: #64748b; }
+.pron-cell .pron-mm { font-size: 13px; font-weight: 700; color: #0f172a; }
+.pron-cell .pron-mm small { font-size: 9px; font-weight: 500; color: #94a3b8; }
+.pron-cell .pron-pp { font-size: 10px; color: #64748b; }
+.pron-cell.lluvia-leve { background: #e0f2fe; }
+.pron-cell.lluvia-media { background: #fef3c7; }
+.pron-cell.lluvia-fuerte { background: #fee2e2; }
+.pronostico-fuente { display: block; margin-top: 8px; font-size: 11px; color: #94a3b8; }
+@media (max-width: 640px) { .pronostico-horas { grid-template-columns: repeat(4, 1fr); } }
+
+/* ── Caudal de ríos (GloFAS) ─────────────────────────────────────── */
+.rios-total { font-size: 13px; font-weight: 700; white-space: nowrap; color: #16a34a; }
+.rios-total.rio-sube { color: #f59e0b; }
+.rios-lista { display: flex; flex-direction: column; gap: 6px; }
+.rio-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; background: #eef2f6; border-left: 4px solid #94a3b8; }
+.rio-row .rio-n { font-size: 13px; font-weight: 600; color: #0f172a; }
+.rio-row .rio-hoy { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+.rio-row .rio-hoy small { font-size: 9px; font-weight: 500; color: #94a3b8; }
+.rio-row .rio-tend { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.rio-row.rio-estable { border-left-color: #16a34a; }
+.rio-row.rio-estable .rio-tend { color: #16a34a; }
+.rio-row.rio-baja { border-left-color: #0ea5e9; background: #e0f2fe; }
+.rio-row.rio-baja .rio-tend { color: #0ea5e9; }
+.rio-row.rio-sube { border-left-color: #f59e0b; background: #fef3c7; }
+.rio-row.rio-sube .rio-tend { color: #b45309; }
+.rio-row.rio-sube-fuerte { border-left-color: #dc2626; background: #fee2e2; }
+.rio-row.rio-sube-fuerte .rio-tend { color: #dc2626; }
+
+/* ── Ayuda contextual (ícono ℹ + tooltip) ────────────────────────── */
+.ayuda-ic { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; min-width: 16px; min-height: 16px; box-sizing: border-box; aspect-ratio: 1 / 1; margin-left: 6px; padding: 0; border: 0; border-radius: 50%; background: #cbd5e1; color: #0f172a; font-size: 11px; font-weight: 700; font-style: italic; letter-spacing: 0; text-transform: none; line-height: 1; cursor: pointer; vertical-align: middle; flex: 0 0 16px; transition: background .15s; }
+.ayuda-ic:hover { background: #2563eb; color: #fff; }
+h2 .ayuda-ic, h3 .ayuda-ic { width: 18px; height: 18px; min-width: 18px; min-height: 18px; flex: 0 0 18px; font-size: 12px; }
+.ayuda-tip { position: fixed; display: none; z-index: 100000; background: #0f172a; color: #f8fafc; font-size: 12.5px; line-height: 1.45; padding: 10px 12px; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.35); pointer-events: none; max-width: 300px; }
+
+/* ── Globo informativo (popup) de los marcadores del mapa ─────────── */
+.crecida-pop .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 10px 34px rgba(2,6,23,.26); padding: 0; }
+.crecida-pop .leaflet-popup-content { margin: 0; }
+.crecida-pop .leaflet-popup-tip { box-shadow: 0 10px 34px rgba(2,6,23,.26); }
+.cp-card { padding: 12px 14px; border-left: 4px solid var(--cp, #0e6e8c); border-radius: 12px; min-width: 170px; }
+.cp-card .cp-eyebrow { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+.cp-card .cp-nombre { margin: 2px 0 8px; font-size: 15px; color: #0f172a; }
+.cp-card .cp-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px solid #f1f5f9; font-size: 13px; }
+.cp-card .cp-row span { color: #64748b; }
+.cp-card .cp-row strong { text-align: right; font-weight: 600; color: #0f172a; }
+.cp-card .cp-empty { margin: 0; color: #64748b; font-size: 13px; }
+
+.rio-grupo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin: 6px 0 2px; }
+.rio-grupo:first-child { margin-top: 0; }
+
+/* ── Logo en header + pantalla de inicio (splash) ─────────────────── */
+.brand-mark { overflow: hidden; background: #fff; padding: 0; }
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+#splash { position: fixed; inset: 0; z-index: 100001; background: #f7f8f8; display: flex; align-items: center; justify-content: center; transition: opacity .55s ease; }
+#splash.hide { opacity: 0; pointer-events: none; }
+#splash img { position: absolute; max-width: min(78vw, 460px); max-height: 42vh; object-fit: contain; opacity: 0; transform: scale(.98); transition: opacity .6s ease, transform .6s ease; }
+#splash img.on { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) { #splash img, #splash { transition: none; } }
+
+/* ── Flujo de acceso: DGIME (teal) → login → CRECIDA ──────────────── */
+.acceso { position: fixed; inset: 0; z-index: 100002; background: #102a43; display: flex; align-items: center; justify-content: center; transition: opacity .55s ease; padding: 20px; }
+.acceso.hide { opacity: 0; pointer-events: none; }
+.acc-step { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity .5s ease, transform .5s ease; }
+.acc-step.on { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.acc-card { background: #fff; border-radius: 18px; padding: 30px 34px; box-shadow: 0 24px 60px rgba(2,6,23,.28); display: flex; align-items: center; justify-content: center; }
+.acc-card img { display: block; width: 100%; max-width: 340px; height: auto; }
+.acc-card-login { flex-direction: column; align-items: stretch; width: min(92vw, 360px); padding: 26px 28px; gap: 2px; }
+.acc-login-logo { width: 120px; margin: 0 auto 10px; }
+.acc-card-login h2 { margin: 0; font-size: 19px; color: #102a43; text-align: center; }
+.acc-sub { margin: 2px 0 16px; font-size: 12px; color: #58A0A3; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: .05em; }
+.acc-card-login label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 12px; }
+.acc-card-login input { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: inherit; }
+.acc-card-login input:focus { outline: none; border-color: #58A0A3; box-shadow: 0 0 0 3px rgba(88,160,163,.2); }
+.acc-btn { margin-top: 4px; padding: 11px 14px; border: 0; border-radius: 10px; background: #102a43; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.acc-btn:hover { background: #1b3a5b; }
+.acc-nota { margin: 12px 0 0; font-size: 11px; color: #94a3b8; text-align: center; }
+.acc-error { margin: 8px 0 0; font-size: 12.5px; font-weight: 600; color: #dc2626; text-align: center; min-height: 1em; }
+.acc-crecida-logo { width: min(80vw, 420px); background: #fff; border-radius: 18px; padding: 26px 30px; box-shadow: 0 24px 60px rgba(2,6,23,.28); }
+
+/* ── Carga masiva de usuarios (Excel) ─────────────────────────────── */
+.bulk-import { margin: 14px 0; padding: 14px 16px; border: 1px dashed #cbd5e1; border-radius: 14px; background: #f8fafc; }
+.bulk-import .bulk-head h3 { margin: 2px 0 0; font-size: 15px; color: #0f172a; }
+.bulk-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px; }
+.bulk-file-label { cursor: pointer; display: inline-flex; align-items: center; }
+.bulk-hint { font-size: 12px; color: #64748b; margin: 4px 0 0; }
+.bulk-result { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: #eef2f6; color: #0f172a; }
+.bulk-result.ok { background: #dcfce7; color: #166534; }
+.bulk-result.warn { background: #fef3c7; color: #92400e; }
+.bulk-result.err { background: #fee2e2; color: #991b1b; }
+.bulk-result ul { margin: 6px 0 0; padding-left: 18px; }
+.bulk-result .bulk-err-title { font-weight: 700; display: inline-block; margin-top: 6px; }
+#logoutButton { white-space: nowrap; }
+
+/* ── Leyenda del radar de lluvia ──────────────────────────────────── */
+.radar-legend { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: #f1f5f9; font-size: 12px; color: #334155; }
+.radar-legend .rl-title { display: block; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.radar-legend .rl-scale { display: flex; gap: 0; height: 10px; border-radius: 6px; overflow: hidden; }
+.radar-legend .rl-scale i { flex: 1; display: block; }
+.radar-legend .rl-labels { display: flex; justify-content: space-between; margin-top: 3px; color: #64748b; }
+.radar-legend .rl-note { display: block; margin-top: 6px; color: #94a3b8; }
+
+/* ── Aforos INA (pastillas con pulso al crecer) ───────────────────── */
+.afo-marker { position: relative; display: flex; align-items: center; justify-content: center; transform: translateY(var(--dy, 0)); pointer-events: auto; }
+.afo-pill { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 4px; background: #fff; color: #0f172a; border: 2px solid var(--afo, #0e6e8c); border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 800; line-height: 1.1; box-shadow: 0 2px 8px rgba(2,6,23,.28); white-space: nowrap; }
+.afo-pill i { font-style: normal; font-size: 11px; color: var(--afo, #0e6e8c); }
+.afo-ring { position: absolute; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--afo, #0e6e8c); opacity: 0; }
+.afo-marker.afo-pulse .afo-ring { opacity: .55; animation: afoPulse 1.6s ease-out infinite; }
+@keyframes afoPulse { 0% { transform: scale(.7); opacity: .55; } 70% { transform: scale(2.6); opacity: 0; } 100% { opacity: 0; } }
+
+/* Nube informativa automática sobre aforos que crecen: sube, se muestra y se esfuma en bucle */
+.afo-nube { position: absolute; left: 50%; bottom: 26px; z-index: 3; transform: translateX(-50%) translateY(8px); display: flex; flex-direction: column; align-items: center; gap: 1px; background: #fff; color: #0f172a; border: 1.5px solid var(--afo, #0e6e8c); border-radius: 10px; padding: 5px 10px; box-shadow: 0 8px 20px rgba(2,6,23,.32); white-space: nowrap; pointer-events: none; opacity: 0; animation: afoNube 6s ease-in-out infinite; }
+.afo-nube b { font-size: 11px; font-weight: 800; line-height: 1.1; }
+.afo-nube span { font-size: 10px; font-weight: 700; color: var(--afo, #0e6e8c); line-height: 1.1; }
+.afo-nube::after { content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--afo, #0e6e8c); }
+@keyframes afoNube {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.92); }
+  10%  { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1); }
+  42%  { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1); }
+  60%  { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(.95); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(.95); }
+}
+@media (prefers-reduced-motion: reduce) { .afo-nube { animation-duration: 9s; } }
+
+/* FIX: el atributo [hidden] debe ganarle a los display:flex/grid de abajo
+   (si no, el selector de áreas y las leyendas se ven siempre). */
+[hidden] { display: none !important; }
+
+/* Selector de Áreas Programáticas (aparece al activar el chip) */
+.area-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.area-opt { display: inline-flex; align-items: center; gap: 6px; font: 600 11.5px/1 system-ui, sans-serif; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(148,163,184,.45); background: rgba(15,23,42,.03); color: #334155; cursor: pointer; transition: all .15s; }
+.area-opt:hover { border-color: rgba(100,116,139,.8); }
+.area-opt i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.area-opt.activo { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+/* Ríos ligados al INA: marcador de crecida (punto pulsante) + leyenda */
+.rio-pin { background: none; border: 0; }
+.rio-crecida { display: block; width: 13px; height: 13px; border-radius: 50%; background: var(--rc, #0ea5e9); box-shadow: 0 0 0 2.5px #fff, 0 0 10px var(--rc, #0ea5e9); position: relative; }
+.rio-crecida::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--rc, #0ea5e9); opacity: .6; animation: rioPulse 1.6s ease-out infinite; }
+@keyframes rioPulse { 0% { transform: scale(.6); opacity: .6; } 70% { transform: scale(2.1); opacity: 0; } 100% { opacity: 0; } }
+.rios-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font: 700 11.5px/1 system-ui, sans-serif; color: #000; }
+.rios-leg .rl-t { font-weight: 800; color: #000; margin-right: 2px; }
+.rios-leg .rl-i { display: inline-flex; align-items: center; gap: 4px; }
+.rios-leg .rl-i i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+/* Leyenda de precipitación (Open-Meteo) */
+.precip-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font: 700 11.5px/1 system-ui, sans-serif; color: #000; }
+.precip-leg .pl-t { font-weight: 800; color: #000; margin-right: 2px; }
+.precip-leg .pl-i { display: inline-flex; align-items: center; gap: 4px; }
+.precip-leg .pl-i i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.precip-leg .pl-note { flex-basis: 100%; color: #000; font-weight: 700; margin-top: 2px; }
+
+/* Lectura al pasar el puntero sobre el mapa (lluvia / temperatura) */
+.clima-readout { position: absolute; z-index: 650; pointer-events: none; background: #fff; color: #0f172a; border: 1px solid rgba(15,23,42,.15); border-radius: 8px; padding: 5px 9px; font: 700 12px/1.3 system-ui, sans-serif; box-shadow: 0 6px 18px rgba(2,6,23,.25); white-space: nowrap; }
+
+/* === Contador de cuota diaria de email (badge en panel de acciones) === */
+.cuota-badge{display:flex;align-items:center;gap:9px;margin-top:10px;padding:8px 11px;border:1px solid #d7e3e8;background:#f1f7f9;border-radius:10px;font-size:12px;color:#0f172a}
+.cuota-badge .cuota-ico{font-size:15px;line-height:1}
+.cuota-badge .cuota-main{display:flex;flex-direction:column;line-height:1.15}
+.cuota-badge .cuota-label{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:600}
+.cuota-badge .cuota-num{font-size:13px;font-weight:600;color:#0e6e8c}
+.cuota-badge .cuota-num b{font-size:15px;font-weight:800}
+.cuota-badge .cuota-note{margin-left:auto;text-align:right;font-size:11px;color:#475569;max-width:52%}
+.cuota-badge.is-warn{border-color:#f1c27d;background:#fff7ec}
+.cuota-badge.is-warn .cuota-num{color:#b45309}
+.cuota-badge.is-warn .cuota-note{color:#92400e;font-weight:600}
+.cuota-badge.is-full{border-color:#f1a9a0;background:#fdecea}
+.cuota-badge.is-full .cuota-num{color:#b91c1c}
+.cuota-badge.is-full .cuota-note{color:#991b1b;font-weight:700}
+
+/* === Acciones del encabezado de Usuarios (Aprobar todos) === */
+.view-header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+
+
+/* === Banner SMN en la tarjeta principal === */
+.smn-banner{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:10px 12px;border-radius:10px;border:1px solid;font-size:13px;line-height:1.3}
+.smn-banner .smn-b-ico{font-size:16px;line-height:1;flex:0 0 auto}
+.smn-banner strong{font-weight:800}
+.smn-banner.smn-amarillo{background:#fef9e7;border-color:#f1c40f;color:#7a5c00}
+.smn-banner.smn-naranja{background:#fff1e6;border-color:#f59e0b;color:#8a4b00}
+.smn-banner.smn-rojo{background:#fdecea;border-color:#dc2626;color:#8a1c14}
+
+
+/* === Jurisdicciones involucradas (tarjeta principal) === */
+.juris-involucradas .section-title-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.juris-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;max-height:280px;overflow:auto}
+.juris-item{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fbfdfe}
+.juris-name{font-weight:700;font-size:13px;color:#0f172a;min-width:120px}
+.juris-causas{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.jc{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#eef4f7;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.jc-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}

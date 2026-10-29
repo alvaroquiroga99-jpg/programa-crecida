@@ -47,6 +47,7 @@
     const alerta = p.get("a") || p.get("alerta") || "";
     const dest   = p.get("d") || p.get("dest") || "";
     const jur    = p.get("j") || p.get("jur")  || "";
+    const destId = p.get("u") || "";
     document.getElementById("datos").innerHTML =
       `<div><span>Alerta</span><strong>${alerta || "—"}</strong></div>` +
       `<div><span>Destinatario</span><strong>${dest || "—"}</strong></div>` +
@@ -64,9 +65,9 @@
     btn.addEventListener("click", async () => {
       btn.disabled = true; btn.textContent = "Registrando…";
       try {
-        const id = `${slug(alerta)}__${slug(dest)}`;
+        const id = `${slug(alerta)}__${destId ? destId : slug(dest)}`;
         await db.collection("confirmaciones").doc(id).set({
-          alerta, dest, destSlug: slug(dest), jurisdiction: jur,
+          alerta, dest, destSlug: slug(dest), destId, jurisdiction: jur,
           ts: Date.now(),
           confirmadoEn: firebase.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });

@@ -6,3 +6,7 @@ programa-crecida-site-*.tar.gz
 programa-crecida-site-publish.tar.gz
 dgime-geovisor-app.js
 npm-debug.log*
+
+# Copias de seguridad locales y material de trabajo (29/10) — no se publican
+backup-29-10*/
+fix-comunicacion/
